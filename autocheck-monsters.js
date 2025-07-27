@@ -15,9 +15,18 @@
 const CONFIG = {
   syncSheetNames: [
     "Collection",
-    "All Mobs & Locations",
-    "Next Easiest Field Mobs"
-    // Add other sheet names here, for example: "My Custom Sheet"
+    "v257 PQ Mobs",
+    "v257 2-Stars",
+    "v257 2-Star Mobs",
+    "Remaining",
+    "Elites",
+    "Field",
+    "Quest",
+    "Boss",
+    "Dungeon",
+    "Special",
+    "Ref"
+    // Eventually add "Next Mob" sheets
   ]
 };
 // --- END OF CONFIGURATION ---
