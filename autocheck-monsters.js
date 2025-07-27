@@ -3,8 +3,7 @@
  * @file This script synchronizes checkboxes across multiple sheets in the active Google Sheet.
  * It's designed for a "Monster Collection" tracker. It assumes that on all relevant sheets,
  * checkboxes are in Column A and the corresponding monster name is in Column B. This version
- * is capable of handling multi-cell edits, such as pasting or dragging to fill multiple checkboxes
- * at once. It runs directly off the user's edit action.
+ * is capable of handling multi-cell edits and logs the changes made during each edit.
  */
 
 // --- CONFIGURATION ---
@@ -87,6 +86,15 @@ function onEdit(e) {
     if (monstersToSyncMap.size === 0) {
       return; // No valid checkboxes were found in the edited range.
     }
+
+    // --- Logging ---
+    // Create a detailed log entry for the changes that are about to be synced.
+    const logEntries = [];
+    for (const [name, isChecked] of monstersToSyncMap.entries()) {
+      logEntries.push(`${name} (${isChecked ? 'Checked' : 'Unchecked'})`);
+    }
+    console.log(`Monster Sync: Processed ${monstersToSyncMap.size} changes. Details: [${logEntries.join('\n')}]`);
+
 
     // --- Synchronization ---
     // Directly iterate over the collected monster states and sync them.
