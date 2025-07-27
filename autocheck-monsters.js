@@ -2,11 +2,9 @@
  * @OnlyCurrentDoc
  * @file This script synchronizes checkboxes across multiple sheets in the active Google Sheet.
  * It's designed for a "Monster Collection" tracker. It assumes that on all relevant sheets,
- * checkboxes are in Column A and the corresponding monster name is in Column B. When a
- * checkbox is changed, this script finds all other instances of that monster on other
- * configured sheets and updates their checkboxes to match. It handles multi-line monster
- * names by normalizing them before comparison. The locking mechanism handles rapid edits on
- * different monsters by tracking each syncing monster individually.
+ * checkboxes are in Column A and the corresponding monster name is in Column B. This version
+ * is capable of handling multi-cell edits, such as pasting or dragging to fill multiple checkboxes
+ * at once. It uses a granular locking mechanism to allow for rapid edits on different monsters.
  */
 
 // --- CONFIGURATION ---
@@ -36,79 +34,110 @@ const CONFIG = {
 
 /**
  * The main trigger function that runs automatically when a user edits the spreadsheet.
- * It identifies if a relevant checkbox was edited and initiates the synchronization.
+ * It identifies all relevant checkboxes within an edited range and initiates synchronization.
  *
  * @param {Object} e The event object passed by the onEdit trigger.
  * @see https://developers.google.com/apps-script/guides/triggers/events
  */
 function onEdit(e) {
-  // This variable must be declared here to be accessible in the `finally` block.
-  let normalizedMonsterName = null;
-  
+  // This Map stores the final state of each unique monster edited in the range.
+  // It must be declared here to be accessible in the `finally` block.
+  let monstersToProcess = new Map();
+
   try {
     const range = e.range;
     const sheet = range.getSheet();
+    const sheetName = sheet.getName();
     const CHECKBOX_COL = 1; // Column A
     const NAME_COL = 2;     // Column B
 
-    // Exit if the edit was not a single checkbox in a configured sheet's checkbox column.
-    if (range.getNumRows() > 1 || range.getNumColumns() > 1) {
+    // --- Initial Checks ---
+    // 1. Is the edited sheet in our configuration?
+    if (!CONFIG.syncSheetNames.includes(sheetName)) {
       return;
     }
-    if (e.value !== "TRUE" && e.value !== "FALSE") {
-      return;
-    }
-    if (range.getColumn() !== CHECKBOX_COL || !CONFIG.syncSheetNames.includes(sheet.getName())) {
+    // 2. Does the edited range intersect with the checkbox column at all?
+    if (range.getLastColumn() < CHECKBOX_COL || range.getColumn() > CHECKBOX_COL) {
       return;
     }
 
-    // Get the monster name from Column B, converting it to a string.
-    const monsterName = sheet.getRange(range.getRow(), NAME_COL).getValue().toString();
-    if (!monsterName || !monsterName.trim()) {
-      return; // Exit if the name cell is effectively blank.
+    // --- Data Acquisition & Processing ---
+    // Get all checkbox and name values from the affected rows in one batch operation.
+    const firstRow = range.getRow();
+    const numRows = range.getNumRows();
+    const checkboxValues = sheet.getRange(firstRow, CHECKBOX_COL, numRows, 1).getValues();
+    const nameValues = sheet.getRange(firstRow, NAME_COL, numRows, 1).getValues();
+
+    const monstersToSyncMap = new Map();
+
+    // Loop once over the affected rows. This is much more efficient.
+    for (let i = 0; i < numRows; i++) {
+      const isChecked = checkboxValues[i][0];
+      // Only process actual boolean TRUE/FALSE from checkboxes.
+      if (typeof isChecked !== 'boolean') {
+        continue;
+      }
+
+      const monsterName = nameValues[i][0].toString();
+      if (!monsterName || !monsterName.trim()) {
+        continue;
+      }
+
+      const normalizedName = monsterName.replace(/\s+/g, ' ').trim();
+      // Use a Map to store the latest state, ensuring each monster is synced only once.
+      monstersToSyncMap.set(normalizedName, isChecked);
     }
 
-    // Assign to the outer-scoped variable after normalizing it.
-    normalizedMonsterName = monsterName.replace(/\s+/g, ' ').trim();
+    if (monstersToSyncMap.size === 0) {
+      return; // No valid checkboxes were found in the edited range.
+    }
 
-    // The lock now stores a comma-separated list of monsters being synced.
+    // --- Locking ---
     const scriptProperties = PropertiesService.getScriptProperties();
     const lockValue = scriptProperties.getProperty('SYNC_LOCK') || '';
-    const lockedMonsters = lockValue.split(',').filter(Boolean); // filter(Boolean) removes empty strings from split
+    const lockedMonsters = new Set(lockValue.split(',').filter(Boolean));
 
-    // If this monster is already being synced, this is a recursive call from the script. Exit.
-    if (lockedMonsters.includes(normalizedMonsterName)) {
-      return;
+    // Filter out any monsters that are already being synced from a previous run.
+    for (const [name, isChecked] of monstersToSyncMap.entries()) {
+      if (!lockedMonsters.has(name)) {
+        monstersToProcess.set(name, isChecked);
+      }
     }
 
-    // Add the current monster to the lock list and update the property.
-    lockedMonsters.push(normalizedMonsterName);
-    scriptProperties.setProperty('SYNC_LOCK', lockedMonsters.join(','));
+    if (monstersToProcess.size === 0) {
+      return; // All monsters in this edit batch were already locked.
+    }
 
-    // --- Proceed with synchronization ---
-    const isChecked = e.value === "TRUE";
-    const originatingSheetName = sheet.getName();
-    syncAllCheckboxes(normalizedMonsterName, isChecked, originatingSheetName);
+    // Add the new, unlocked monsters to the lock property.
+    for (const name of monstersToProcess.keys()) {
+      lockedMonsters.add(name);
+    }
+    scriptProperties.setProperty('SYNC_LOCK', Array.from(lockedMonsters).join(','));
+
+    // --- Synchronization ---
+    for (const [name, isChecked] of monstersToProcess.entries()) {
+      syncAllCheckboxes(name, isChecked, sheetName);
+    }
 
   } catch (error) {
-    // Log any errors to help with debugging.
     console.error(`An error occurred in onEdit: ${error.toString()}`);
   } finally {
-    // This block runs whether the 'try' block succeeded or failed.
-    // It removes the currently processed monster from the lock.
-    if (normalizedMonsterName) {
+    // --- Unlocking ---
+    // This runs whether the 'try' block succeeded or failed, ensuring locks are removed.
+    if (monstersToProcess.size > 0) {
       const scriptProperties = PropertiesService.getScriptProperties();
       const lockValue = scriptProperties.getProperty('SYNC_LOCK') || '';
-      let lockedMonsters = lockValue.split(',').filter(Boolean);
+      const lockedMonsters = new Set(lockValue.split(',').filter(Boolean));
 
-      // Filter out the monster that is done syncing.
-      lockedMonsters = lockedMonsters.filter(m => m !== normalizedMonsterName);
+      // Remove the monsters that are now done syncing.
+      for (const name of monstersToProcess.keys()) {
+        lockedMonsters.delete(name);
+      }
 
-      if (lockedMonsters.length > 0) {
-        // If other monsters are still syncing, update the lock with the remaining list.
-        scriptProperties.setProperty('SYNC_LOCK', lockedMonsters.join(','));
+      if (lockedMonsters.size > 0) {
+        scriptProperties.setProperty('SYNC_LOCK', Array.from(lockedMonsters).join(','));
       } else {
-        // If no monsters are left in the lock, delete the property entirely for cleanliness.
+        // If no monsters are left in the lock, delete the property for cleanliness.
         scriptProperties.deleteProperty('SYNC_LOCK');
       }
     }
