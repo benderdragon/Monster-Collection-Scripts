@@ -5,7 +5,8 @@
  * checkboxes are in Column A and the corresponding monster name is in Column B. When a
  * checkbox is changed, this script finds all other instances of that monster on other
  * configured sheets and updates their checkboxes to match. It handles multi-line monster
- * names by normalizing them before comparison.
+ * names by normalizing them before comparison. The locking mechanism handles rapid edits on
+ * different monsters by tracking each syncing monster individually.
  */
 
 // --- CONFIGURATION ---
@@ -41,11 +42,8 @@ const CONFIG = {
  * @see https://developers.google.com/apps-script/guides/triggers/events
  */
 function onEdit(e) {
-  // Use a lock to prevent the script from triggering itself and causing an infinite loop.
-  const lock = PropertiesService.getScriptProperties().getProperty('SYNC_LOCK');
-  if (lock) {
-    return;
-  }
+  // This variable must be declared here to be accessible in the `finally` block.
+  let normalizedMonsterName = null;
   
   try {
     const range = e.range;
@@ -66,26 +64,54 @@ function onEdit(e) {
 
     // Get the monster name from Column B, converting it to a string.
     const monsterName = sheet.getRange(range.getRow(), NAME_COL).getValue().toString();
-    // Exit if the name cell is effectively blank.
     if (!monsterName || !monsterName.trim()) {
+      return; // Exit if the name cell is effectively blank.
+    }
+
+    // Assign to the outer-scoped variable after normalizing it.
+    normalizedMonsterName = monsterName.replace(/\s+/g, ' ').trim();
+
+    // The lock now stores a comma-separated list of monsters being synced.
+    const scriptProperties = PropertiesService.getScriptProperties();
+    const lockValue = scriptProperties.getProperty('SYNC_LOCK') || '';
+    const lockedMonsters = lockValue.split(',').filter(Boolean); // filter(Boolean) removes empty strings from split
+
+    // If this monster is already being synced, this is a recursive call from the script. Exit.
+    if (lockedMonsters.includes(normalizedMonsterName)) {
       return;
     }
 
-    // Normalize the name by replacing any whitespace sequence (incl. newlines) with a single space.
-    const normalizedMonsterName = monsterName.replace(/\s+/g, ' ').trim();
+    // Add the current monster to the lock list and update the property.
+    lockedMonsters.push(normalizedMonsterName);
+    scriptProperties.setProperty('SYNC_LOCK', lockedMonsters.join(','));
+
+    // --- Proceed with synchronization ---
     const isChecked = e.value === "TRUE";
     const originatingSheetName = sheet.getName();
-
-    // Set the lock, then perform the synchronization.
-    PropertiesService.getScriptProperties().setProperty('SYNC_LOCK', 'true', 30000); // Lock expires in 30s
     syncAllCheckboxes(normalizedMonsterName, isChecked, originatingSheetName);
 
   } catch (error) {
     // Log any errors to help with debugging.
     console.error(`An error occurred in onEdit: ${error.toString()}`);
   } finally {
-    // ALWAYS release the lock, even if an error occurs.
-    PropertiesService.getScriptProperties().deleteProperty('SYNC_LOCK');
+    // This block runs whether the 'try' block succeeded or failed.
+    // It removes the currently processed monster from the lock.
+    if (normalizedMonsterName) {
+      const scriptProperties = PropertiesService.getScriptProperties();
+      const lockValue = scriptProperties.getProperty('SYNC_LOCK') || '';
+      let lockedMonsters = lockValue.split(',').filter(Boolean);
+
+      // Filter out the monster that is done syncing.
+      lockedMonsters = lockedMonsters.filter(m => m !== normalizedMonsterName);
+
+      if (lockedMonsters.length > 0) {
+        // If other monsters are still syncing, update the lock with the remaining list.
+        scriptProperties.setProperty('SYNC_LOCK', lockedMonsters.join(','));
+      } else {
+        // If no monsters are left in the lock, delete the property entirely for cleanliness.
+        scriptProperties.deleteProperty('SYNC_LOCK');
+      }
+    }
   }
 }
 
