@@ -1,41 +1,23 @@
 /**
- * @file This script synchronizes checkboxes across multiple sheets in a Google Sheet.
- * It's designed for a "Monster Collection" tracker where a monster may appear on a master
- * list ("Collection") and several other informational sheets. When a checkbox for a monster
- * is checked or unchecked on any configured sheet, this script finds all other instances
-* of that monster and updates their checkboxes to match.
+ * @OnlyCurrentDoc
+ * @file This script synchronizes checkboxes across multiple sheets in the active Google Sheet.
+ * It's designed for a "Monster Collection" tracker. It assumes that on all relevant sheets,
+ * checkboxes are in Column A and the corresponding monster name is in Column B. When a
+ * checkbox is changed, this script finds all other instances of that monster on other
+ * configured sheets and updates their checkboxes to match.
  */
 
 // --- CONFIGURATION ---
-// IMPORTANT: Adjust this section to match your spreadsheet's layout.
-// - sheetName: The exact name of the sheet tab.
-// - checkboxCol: The column number of the checkboxes (A=1, B=2, C=3, etc.).
-// - nameCol: The column number where the monster's name is located.
+// IMPORTANT: Add the names of all sheets you want to synchronize into this list.
+// The script assumes for ALL these sheets:
+// - Column A contains the checkboxes.
+// - Column B contains the monster names.
 const CONFIG = {
-  // The 'master' sheet is the main collection log.
-  masterSheet: {
-    sheetName: "Collection",
-    checkboxCol: 1, // Assumed Column A
-    nameCol: 2,     // Assumed Column B contains the monster name
-  },
-  // 'syncSheets' are all other sheets that should be linked. Add more sheets here as needed.
-  syncSheets: [
-    {
-      sheetName: "All Mobs & Locations",
-      checkboxCol: 2, // GUESS: Assuming checkboxes are in Col B
-      nameCol: 3,     // GUESS: Assuming monster names are in Col C
-    },
-    {
-      sheetName: "Next Easiest Field Mobs",
-      checkboxCol: 1, // GUESS: Assuming checkboxes are in Col A
-      nameCol: 2,     // GUESS: Assuming monster names are in Col B
-    },
-    // Add another sheet configuration here if needed, like this:
-    // {
-    //   sheetName: "Another Sheet",
-    //   checkboxCol: 4, // Column D
-    //   nameCol: 5,     // Column E
-    // }
+  syncSheetNames: [
+    "Collection",
+    "All Mobs & Locations",
+    "Next Easiest Field Mobs"
+    // Add other sheet names here, for example: "My Custom Sheet"
   ]
 };
 // --- END OF CONFIGURATION ---
@@ -58,37 +40,26 @@ function onEdit(e) {
   try {
     const range = e.range;
     const sheet = range.getSheet();
-    const sheetName = sheet.getName();
-    const row = range.getRow();
-    const col = range.getColumn();
-    
-    // Exit if the edit was not on a single cell or if it was not a checkbox value.
+    const CHECKBOX_COL = 1; // Column A
+    const NAME_COL = 2;     // Column B
+
+    // Exit if the edit was not a single checkbox in a configured sheet's checkbox column.
     if (range.getNumRows() > 1 || range.getNumColumns() > 1) return;
     if (e.value !== "TRUE" && e.value !== "FALSE") return;
-    
-    // Determine if the edited cell is one of the configured checkboxes.
-    let monsterName;
-    let nameCol;
-    const isChecked = e.value === "TRUE";
-
-    if (sheetName === CONFIG.masterSheet.sheetName && col === CONFIG.masterSheet.checkboxCol) {
-      nameCol = CONFIG.masterSheet.nameCol;
-    } else {
-      const syncConfig = CONFIG.syncSheets.find(s => s.sheetName === sheetName && s.checkboxCol === col);
-      if (syncConfig) {
-        nameCol = syncConfig.nameCol;
-      } else {
-        return; // Edit was not in a configured checkbox column on any relevant sheet.
-      }
+    if (range.getColumn() !== CHECKBOX_COL || !CONFIG.syncSheetNames.includes(sheet.getName())) {
+      return;
     }
-    
-    // Get the monster name from the corresponding name column in the edited row.
-    monsterName = sheet.getRange(row, nameCol).getValue();
+
+    // Get the monster name from Column B in the edited row.
+    const monsterName = sheet.getRange(range.getRow(), NAME_COL).getValue();
     if (!monsterName) return; // Exit if the name cell is blank.
+
+    const isChecked = e.value === "TRUE";
+    const originatingSheetName = sheet.getName();
 
     // Set the lock, then perform the synchronization.
     PropertiesService.getScriptProperties().setProperty('SYNC_LOCK', 'true', 30000); // Lock expires in 30s
-    syncAllCheckboxes(monsterName, isChecked, sheetName);
+    syncAllCheckboxes(monsterName, isChecked, originatingSheetName);
 
   } catch (error) {
     // Log any errors to help with debugging.
@@ -101,7 +72,7 @@ function onEdit(e) {
 
 /**
  * Finds all instances of a given monster across all configured sheets and updates
- * their checkbox state.
+ * their checkbox state to match.
  *
  * @param {string} monsterName The name of the monster to search for.
  * @param {boolean} isChecked The new state for the checkbox (true for checked, false for unchecked).
@@ -109,27 +80,28 @@ function onEdit(e) {
  */
 function syncAllCheckboxes(monsterName, isChecked, originatingSheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
-  const allSheetConfigs = [CONFIG.masterSheet, ...CONFIG.syncSheets];
+  const CHECKBOX_COL = 1; // Column A
+  const NAME_COL = 2;     // Column B
 
-  allSheetConfigs.forEach(config => {
+  CONFIG.syncSheetNames.forEach(sheetName => {
     // Skip the sheet where the original edit happened.
-    if (config.sheetName === originatingSheetName) {
+    if (sheetName === originatingSheetName) {
       return;
     }
     
-    const sheet = ss.getSheetByName(config.sheetName);
+    const sheet = ss.getSheetByName(sheetName);
     if (!sheet) return;
 
-    // Use TextFinder for an efficient search of the monster name in the correct column.
-    const searchRange = sheet.getRange(1, config.nameCol, sheet.getLastRow());
+    // Use TextFinder for an efficient search of the monster name in Column B.
+    const searchRange = sheet.getRange(1, NAME_COL, sheet.getLastRow());
     const textFinder = searchRange.createTextFinder(monsterName).matchEntireCell(true).matchCase(false);
     const foundRanges = textFinder.findAll();
 
-    // If any matches are found, update the checkbox in the corresponding row.
+    // If any matches are found, update the checkbox in Column A of the corresponding row.
     if (foundRanges.length > 0) {
       foundRanges.forEach(foundRange => {
         const targetRow = foundRange.getRow();
-        const checkboxCell = sheet.getRange(targetRow, config.checkboxCol);
+        const checkboxCell = sheet.getRange(targetRow, CHECKBOX_COL);
         // Only update if the value is different to avoid unnecessary edits.
         if (checkboxCell.isChecked() !== isChecked) {
             checkboxCell.setValue(isChecked);
