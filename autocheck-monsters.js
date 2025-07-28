@@ -1,11 +1,9 @@
 /**
  * @OnlyCurrentDoc
  * @file This script synchronizes checkboxes across multiple sheets in the active Google Sheet.
- * It's designed for a "Monster Collection" tracker. When a user edits a checkbox on any
- * configured sheet, this script treats that sheet as the "source of truth" and updates all
- * other configured sheets to match its state. This approach ensures that multi-cell toggles
- * (using the spacebar) work as expected. It uses high-performance batch operations and
- * intelligently skips overwriting cells that contain formulas.
+ * It's designed for a "Monster Collection" tracker. It also provides a developer utility
+ * to convert checkbox columns from formulas to boolean values, which is intended to be
+ * run manually from the Apps Script editor.
  *
  * @typedef {Object} UpdateObject An object representing a single cell update.
  * @property {number} rowIndex The 1-based index of the row to update.
@@ -39,6 +37,84 @@ const CONFIG = {
   ]
 };
 // --- END OF CONFIGURATION ---
+
+
+/**
+ * A developer utility function that finds all cells in the checkbox column (A) that are
+ * formatted as a checkbox, contain a formula, AND have a corresponding monster name in Column B.
+ * It replaces these formulas with a default `FALSE` value, while preserving all other formulas.
+ * This is intended to be run manually from the Apps Script Editor.
+ */
+function flattenCheckboxFormulas() {
+  console.log('Starting formula flattening process...');
+  const ss = SpreadsheetApp.getActiveSpreadsheet();
+  const CHECKBOX_COL = 1; // Column A
+  const NAME_COL = 2;     // Column B
+  let sheetsAffected = 0;
+  let formulasReplaced = 0;
+
+  CONFIG.syncSheetNames.forEach(sheetName => {
+    // We explicitly skip the main "Collection" sheet.
+    if (sheetName === 'Collection') {
+      return;
+    }
+
+    const sheet = ss.getSheetByName(sheetName);
+    if (!sheet) {
+      console.warn(`Sheet "${sheetName}" not found. Skipping.`);
+      return;
+    }
+    
+    const lastRow = sheet.getLastRow();
+    if (lastRow === 0) {
+      return; // Sheet is empty.
+    }
+    
+    // Read all relevant data in batch for efficiency.
+    const checkboxColumnRange = sheet.getRange(1, CHECKBOX_COL, lastRow, 1);
+    const nameColumnRange = sheet.getRange(1, NAME_COL, lastRow, 1);
+    
+    const checkboxFormulas = checkboxColumnRange.getFormulas();
+    const checkboxValues = checkboxColumnRange.getValues();
+    const checkboxValidations = checkboxColumnRange.getDataValidations();
+    const nameValues = nameColumnRange.getValues();
+    
+    // This array will be rebuilt with the correct mix of values and formulas.
+    const dataToWrite = [];
+    let sheetHasChanges = false;
+    
+    for (let i = 0; i < lastRow; i++) {
+      const hasFormula = checkboxFormulas[i][0] !== '';
+      const validationRule = checkboxValidations[i][0];
+      const isCheckbox = validationRule?.getCriteriaType() === SpreadsheetApp.DataValidationCriteria.CHECKBOX;
+      const monsterName = nameValues[i][0]?.toString();
+
+      // This is the key condition: the cell must be a checkbox, have a formula,
+      // and be on a row with a monster name.
+      if (isCheckbox && hasFormula && monsterName?.trim()) {
+        // Condition met: flatten this cell to FALSE.
+        dataToWrite.push([false]);
+        formulasReplaced++;
+        sheetHasChanges = true;
+      } else if (hasFormula) {
+        // It's a formula, but not one we want to flatten. Preserve it.
+        dataToWrite.push([checkboxFormulas[i][0]]);
+      } else {
+        // It's just a static value. Preserve it.
+        dataToWrite.push([checkboxValues[i][0]]);
+      }
+    }
+
+    if (sheetHasChanges) {
+      sheetsAffected++;
+      console.log(`Found changes for sheet "${sheetName}". Applying now...`);
+      // The setValues method correctly interprets strings starting with '=' as formulas.
+      checkboxColumnRange.setValues(dataToWrite);
+    }
+  });
+  
+  console.log(`Operation Complete. Replaced ${formulasReplaced} formula(s) across ${sheetsAffected} sheet(s).`);
+}
 
 
 /**
