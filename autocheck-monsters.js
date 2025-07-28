@@ -4,8 +4,16 @@
  * It's designed for a "Monster Collection" tracker. When a user edits a checkbox on any
  * configured sheet, this script treats that sheet as the "source of truth" and updates all
  * other configured sheets to match its state. This approach ensures that multi-cell toggles
- * (using the spacebar) work as expected. It uses high-performance batch operations for
- * reading and writing data to handle large sheets efficiently.
+ * (using the spacebar) work as expected. It uses high-performance batch operations and
+ * intelligently skips overwriting cells that contain formulas.
+ *
+ * @typedef {Object} UpdateObject An object representing a single cell update.
+ * @property {number} rowIndex The 1-based index of the row to update.
+ * @property {boolean} newValue The new boolean value for the checkbox.
+ *
+ * @typedef {Object} BatchObject An object representing a contiguous block of updates.
+ * @property {number} startRow The 1-based index of the first row in the batch.
+ * @property {Array<Array<boolean>>} values A 2D array of checkbox values to be written.
  */
 
 // --- CONFIGURATION ---
@@ -83,7 +91,7 @@ function onEdit(e) {
     const sourceDataMap = new Map();
     sourceData.forEach(row => {
       const isChecked = row[0];
-      const monsterName = row[1].toString();
+      const monsterName = row[1]?.toString();
       if (typeof isChecked === 'boolean' && monsterName?.trim()) {
         const normalizedName = monsterName.replace(/\s+/g, ' ').trim();
         sourceDataMap.set(normalizedName, isChecked);
@@ -107,8 +115,41 @@ function onEdit(e) {
 }
 
 /**
+ * Creates batches of contiguous row updates to be applied.
+ *
+ * @param {Array<UpdateObject>} updatesToApply An array of objects, each with a rowIndex and a newValue.
+ * @returns {Array<BatchObject>} An array of batch objects, each with a startRow and a values array.
+ */
+function groupUpdatesIntoBatches(updatesToApply) {
+  if (updatesToApply.length === 0) {
+    return [];
+  }
+
+  // Sort updates by row index to ensure they are in order.
+  updatesToApply.sort((a, b) => a.rowIndex - b.rowIndex);
+
+  const batches = [];
+  let currentBatch = { startRow: updatesToApply[0].rowIndex, values: [[updatesToApply[0].newValue]] };
+
+  for (let i = 1; i < updatesToApply.length; i++) {
+    // If the current row is exactly one after the previous, it's a contiguous block.
+    if (updatesToApply[i].rowIndex === updatesToApply[i - 1].rowIndex + 1) {
+      currentBatch.values.push([updatesToApply[i].newValue]);
+    } else {
+      // The block is broken; push the completed batch and start a new one.
+      batches.push(currentBatch);
+      currentBatch = { startRow: updatesToApply[i].rowIndex, values: [[updatesToApply[i].newValue]] };
+    }
+  }
+  // Add the final batch to the list.
+  batches.push(currentBatch);
+
+  return batches;
+}
+
+/**
  * Syncs all configured sheets to match the state provided in the sourceDataMap.
- * Uses batch operations to read and write data for maximum performance.
+ * Uses batch operations to read and write data for maximum performance, skipping formulas.
  *
  * @param {Map<string, boolean>} sourceDataMap A map of normalized monster names to their checkbox state.
  * @param {string} originatingSheetName The name of the sheet the data came from, which will be skipped.
@@ -134,38 +175,45 @@ function syncAllSheets(sourceDataMap, originatingSheetName) {
       return; // Target sheet is empty.
     }
 
-    // Read all checkbox and name data from the target sheet in one batch.
+    // Read all checkbox values, name values, AND formulas from the target sheet in one batch.
     const targetRange = sheet.getRange(1, CHECKBOX_COL, lastRow, NAME_COL - CHECKBOX_COL + 1);
     const targetData = targetRange.getValues();
+    const targetFormulas = targetRange.getFormulas();
 
-    // Create a mutable copy of the checkbox column's data. This will be modified and written back.
-    const newCheckboxValues = targetData.map(row => [row[0]]);
-    let changesMade = 0;
+    const updatesToApply = [];
 
     // Compare each monster on the target sheet with the source data.
     targetData.forEach((row, index) => {
       const currentCheckedState = row[0];
-      const monsterName = row[1].toString();
+      const monsterName = row[1]?.toString();
+      const hasFormula = targetFormulas[index][0] !== '';
       
-      if (monsterName?.trim()) {
+      // We only proceed if there is a valid monster name and the cell does NOT have a formula.
+      if (!hasFormula && monsterName?.trim()) {
         const normalizedName = monsterName.replace(/\s+/g, ' ').trim();
         
         // If the monster exists in our source map and its state is different...
         if (sourceDataMap.has(normalizedName) && sourceDataMap.get(normalizedName) !== currentCheckedState) {
-          // ...update its state in our new data array.
-          newCheckboxValues[index][0] = sourceDataMap.get(normalizedName);
-          changesMade++;
+          // ...add this change to our list of updates to apply.
+          updatesToApply.push({ rowIndex: index + 1, newValue: sourceDataMap.get(normalizedName) });
         }
       }
     });
     
-    // If we found any differences, apply all changes in a single batch write.
-    if (changesMade > 0) {
-      const checkboxRange = sheet.getRange(1, CHECKBOX_COL, newCheckboxValues.length, 1);
-      console.log(`Script Action: Applying ${changesMade} updates to sheet '${sheetName}' in one batch.`);
-      checkboxRange.setValues(newCheckboxValues);
+    // Group the individual updates into contiguous batches.
+    const batches = groupUpdatesIntoBatches(updatesToApply);
+
+    // If we have batches, apply them.
+    if (batches.length > 0) {
+      let totalChanges = 0;
+      batches.forEach(batch => {
+        totalChanges += batch.values.length;
+        const checkboxRange = sheet.getRange(batch.startRow, CHECKBOX_COL, batch.values.length, 1);
+        checkboxRange.setValues(batch.values);
+      });
+      console.log(`Script Action: Applied ${totalChanges} updates to sheet '${sheetName}' in ${batches.length} batch(es).`);
     } else {
-      console.log(`Sync Check: Sheet '${sheetName}' is already in sync. No changes needed.`);
+      console.log(`Sync Check: Sheet '${sheetName}' is already in sync or has no updatable cells. No changes needed.`);
     }
   });
 }
