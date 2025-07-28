@@ -1,9 +1,11 @@
 /**
  * @OnlyCurrentDoc
  * @file This script synchronizes checkboxes across multiple sheets in the active Google Sheet.
- * It's designed for a "Monster Collection" tracker. It assumes that on all relevant sheets,
- * checkboxes are in Column A and the corresponding monster name is in Column B. This version
- * is capable of handling multi-cell edits and logs the changes made during each edit.
+ * It's designed for a "Monster Collection" tracker. When a user edits a checkbox on any
+ * configured sheet, this script treats that sheet as the "source of truth" and updates all
+ * other configured sheets to match its state. This approach ensures that multi-cell toggles
+ * (using the spacebar) work as expected. It uses high-performance batch operations for
+ * reading and writing data to handle large sheets efficiently.
  */
 
 // --- CONFIGURATION ---
@@ -33,7 +35,7 @@ const CONFIG = {
 
 /**
  * The main trigger function that runs automatically when a user edits the spreadsheet.
- * It identifies all relevant checkboxes within an edited range and initiates synchronization.
+ * It reads the entire state of the edited sheet and triggers a full synchronization.
  *
  * @param {Object} e The event object passed by the onEdit trigger.
  * @see https://developers.google.com/apps-script/guides/triggers/events
@@ -43,64 +45,60 @@ function onEdit(e) {
     const range = e.range;
     const sheet = range.getSheet();
     const sheetName = sheet.getName();
+    // Log only the first character of the user's email.
+    const userInitial = e.user?.getEmail()?.charAt(0) ?? '?';
     const CHECKBOX_COL = 1; // Column A
     const NAME_COL = 2;     // Column B
+
+    // --- Initial User Action Log ---
+    console.log(`User Edit: User '${userInitial}' triggered sync from sheet '${sheetName}'. (Edit range: ${range.getA1Notation()})`);
 
     // --- Initial Checks ---
     // 1. Is the edited sheet in our configuration?
     if (!CONFIG.syncSheetNames.includes(sheetName)) {
       return;
     }
-    // 2. Does the edited range intersect with the checkbox column at all?
-    if (range.getLastColumn() < CHECKBOX_COL || range.getColumn() > CHECKBOX_COL) {
+    // 2. Was the edit in the checkbox column? This prevents syncs when editing names, etc.
+    if (range.getColumn() !== CHECKBOX_COL) {
       return;
     }
 
-    // --- Data Acquisition & Processing ---
-    // Get all checkbox and name values from the affected rows in one batch operation.
-    const firstRow = range.getRow();
-    const numRows = range.getNumRows();
-    const checkboxValues = sheet.getRange(firstRow, CHECKBOX_COL, numRows, 1).getValues();
-    const nameValues = sheet.getRange(firstRow, NAME_COL, numRows, 1).getValues();
+    // --- Data Acquisition from Source Sheet ---
+    const lastRow = sheet.getLastRow();
+    if (lastRow === 0) {
+      return; // Sheet is completely empty.
+    }
+    
+    // DEV COMMENT: We read the *entire* sheet instead of just the edited range (`e.range`).
+    // This is crucial for handling the "spacebar toggle" on a multi-cell selection, where Sheets
+    // only reports the active cell as edited. By reading the whole sheet, we capture the
+    // final state regardless of how the edit was performed, making the sync robust.
+    const sourceRange = sheet.getRange(1, CHECKBOX_COL, lastRow, NAME_COL - CHECKBOX_COL + 1);
+    const sourceData = sourceRange.getValues();
 
-    const monstersToSyncMap = new Map();
-
-    // Loop once over the affected rows.
-    for (let i = 0; i < numRows; i++) {
-      const isChecked = checkboxValues[i][0];
-      // Only process actual boolean TRUE/FALSE from checkboxes.
-      if (typeof isChecked !== 'boolean') {
-        continue;
+    // DEV COMMENT: The script starts processing from row 1. It correctly skips over headers or
+    // any other non-data rows (e.g., spacers) because of the validation checks below.
+    // The checks for `typeof isChecked === 'boolean'` and a non-empty `monsterName` ensure
+    // that only rows with valid, paired data are ever processed.
+    const sourceDataMap = new Map();
+    sourceData.forEach(row => {
+      const isChecked = row[0];
+      const monsterName = row[1].toString();
+      if (typeof isChecked === 'boolean' && monsterName?.trim()) {
+        const normalizedName = monsterName.replace(/\s+/g, ' ').trim();
+        sourceDataMap.set(normalizedName, isChecked);
       }
+    });
 
-      const monsterName = nameValues[i][0].toString();
-      if (!monsterName || !monsterName.trim()) {
-        continue;
-      }
-
-      const normalizedName = monsterName.replace(/\s+/g, ' ').trim();
-      // Use a Map to store the latest state, ensuring each monster is synced only once per edit.
-      monstersToSyncMap.set(normalizedName, isChecked);
+    if (sourceDataMap.size === 0) {
+      console.log("Sync Check: No valid monster data found on source sheet. Halting.");
+      return;
     }
 
-    if (monstersToSyncMap.size === 0) {
-      return; // No valid checkboxes were found in the edited range.
-    }
-
-    // --- Logging ---
-    // Create a detailed log entry for the changes that are about to be synced.
-    const logEntries = [];
-    for (const [name, isChecked] of monstersToSyncMap.entries()) {
-      logEntries.push(`${name} (${isChecked ? 'Checked' : 'Unchecked'})`);
-    }
-    console.log(`Monster Sync: Processed ${monstersToSyncMap.size} changes. Details: [${logEntries.join('\n')}]`);
-
+    console.log(`Sync Plan: Syncing all ${sourceDataMap.size} monster states from sheet '${sheetName}'.`);
 
     // --- Synchronization ---
-    // Directly iterate over the collected monster states and sync them.
-    for (const [name, isChecked] of monstersToSyncMap.entries()) {
-      syncAllCheckboxes(name, isChecked, sheetName);
-    }
+    syncAllSheets(sourceDataMap, sheetName);
 
   } catch (error) {
     // Log any errors to help with debugging.
@@ -109,55 +107,65 @@ function onEdit(e) {
 }
 
 /**
- * Finds all instances of a given monster across all configured sheets and updates
- * their checkbox state. It compares names in a normalized way to handle newlines.
+ * Syncs all configured sheets to match the state provided in the sourceDataMap.
+ * Uses batch operations to read and write data for maximum performance.
  *
- * @param {string} normalizedMonsterName The space-normalized name of the monster to search for.
- * @param {boolean} isChecked The new state for the checkbox (true for checked, false for unchecked).
- * @param {string} originatingSheetName The name of the sheet where the edit was made, to avoid updating it unnecessarily.
+ * @param {Map<string, boolean>} sourceDataMap A map of normalized monster names to their checkbox state.
+ * @param {string} originatingSheetName The name of the sheet the data came from, which will be skipped.
  */
-function syncAllCheckboxes(normalizedMonsterName, isChecked, originatingSheetName) {
+function syncAllSheets(sourceDataMap, originatingSheetName) {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   const CHECKBOX_COL = 1; // Column A
   const NAME_COL = 2;     // Column B
 
   CONFIG.syncSheetNames.forEach(sheetName => {
-    // Skip the sheet where the original edit happened.
+    // Skip the sheet that was the source of the changes.
     if (sheetName === originatingSheetName) {
       return;
     }
-    
+
     const sheet = ss.getSheetByName(sheetName);
     if (!sheet) {
       return;
     }
-
-    // Get all names from the name column to perform a manual, normalized search.
-    // We start from row 2 to account for a potential header row.
-    const firstDataRow = 2;
+    
     const lastRow = sheet.getLastRow();
-    if (lastRow < firstDataRow) {
-      return; // Sheet has no data to search.
+    if (lastRow === 0) {
+      return; // Target sheet is empty.
     }
-    const namesRange = sheet.getRange(firstDataRow, NAME_COL, lastRow - firstDataRow + 1);
-    const namesData = namesRange.getValues();
 
-    // Find all rows that match the normalized monster name.
-    namesData.forEach((row, index) => {
-        const currentName = row[0].toString();
-        // Normalize the name from the sheet in the same way as the source name.
-        const normalizedCurrentName = currentName.replace(/\s+/g, ' ').trim();
+    // Read all checkbox and name data from the target sheet in one batch.
+    const targetRange = sheet.getRange(1, CHECKBOX_COL, lastRow, NAME_COL - CHECKBOX_COL + 1);
+    const targetData = targetRange.getValues();
 
-        if (normalizedCurrentName === normalizedMonsterName) {
-            // Calculate the actual row number in the sheet.
-            const targetRow = firstDataRow + index;
-            const checkboxCell = sheet.getRange(targetRow, CHECKBOX_COL);
-            
-            // Only update if the value is different to avoid unnecessary edits.
-            if (checkboxCell.isChecked() !== isChecked) {
-                checkboxCell.setValue(isChecked);
-            }
+    // Create a mutable copy of the checkbox column's data. This will be modified and written back.
+    const newCheckboxValues = targetData.map(row => [row[0]]);
+    let changesMade = 0;
+
+    // Compare each monster on the target sheet with the source data.
+    targetData.forEach((row, index) => {
+      const currentCheckedState = row[0];
+      const monsterName = row[1].toString();
+      
+      if (monsterName?.trim()) {
+        const normalizedName = monsterName.replace(/\s+/g, ' ').trim();
+        
+        // If the monster exists in our source map and its state is different...
+        if (sourceDataMap.has(normalizedName) && sourceDataMap.get(normalizedName) !== currentCheckedState) {
+          // ...update its state in our new data array.
+          newCheckboxValues[index][0] = sourceDataMap.get(normalizedName);
+          changesMade++;
         }
+      }
     });
+    
+    // If we found any differences, apply all changes in a single batch write.
+    if (changesMade > 0) {
+      const checkboxRange = sheet.getRange(1, CHECKBOX_COL, newCheckboxValues.length, 1);
+      console.log(`Script Action: Applying ${changesMade} updates to sheet '${sheetName}' in one batch.`);
+      checkboxRange.setValues(newCheckboxValues);
+    } else {
+      console.log(`Sync Check: Sheet '${sheetName}' is already in sync. No changes needed.`);
+    }
   });
 }
