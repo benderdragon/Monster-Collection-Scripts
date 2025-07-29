@@ -42,15 +42,16 @@ function updateMonsterLinks() {
   }
   console.log(`Processing ${lastRow - 1} rows from 'Collection' sheet.`);
 
-  const collectionRange = collectionSheet.getRange('A2:E' + lastRow);
-  const collectionRichText = collectionRange.getRichTextValues();
-  // We get names separately as strings for easier normalization.
+  const linkRange = collectionSheet.getRange('E2:E' + lastRow);
+  const linkRichTextValues = linkRange.getRichTextValues();
+
+  // We need the names from column B for matching.
   const collectionNames = collectionSheet.getRange('B2:B' + lastRow).getValues();
 
   let updatedLinksCount = 0;
 
-  for (let i = 0; i < collectionRichText.length; i++) {
-    const cellRichText = collectionRichText[i][4]; // Column E rich text
+  for (let i = 0; i < linkRichTextValues.length; i++) {
+    const cellRichText = linkRichTextValues[i][0];
     const linkUrl = cellRichText.getLinkUrl();
     const monsterNameToFind = collectionNames[i][0];
 
@@ -114,7 +115,7 @@ function updateMonsterLinks() {
               newLinkBuilder.setLinkUrl(0, text.length, newUrl);
 
               // Overwrite the old RichTextValue in our array.
-              collectionRichText[i][4] = newLinkBuilder.build();
+              linkRichTextValues[i][0] = newLinkBuilder.build();
               updatedLinksCount++;
             }
           }
@@ -126,7 +127,7 @@ function updateMonsterLinks() {
   // Write the updated rich text values back to the sheet in one operation.
   if (updatedLinksCount > 0) {
     console.log(`Writing ${updatedLinksCount} updated links back to the sheet.`);
-    collectionRange.setRichTextValues(collectionRichText);
+    linkRange.setRichTextValues(linkRichTextValues);
   }
 
   console.log(`Processing complete. ${updatedLinksCount} links updated.`);
