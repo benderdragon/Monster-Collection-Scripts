@@ -34,11 +34,11 @@ vs. &quot;Prefix\nName&quot;. All original rich text formatting in the cell is p
 ## Typedefs
 
 <dl>
+<dt><a href="#UpdateObject">UpdateObject</a> : <code>Object</code></dt>
+<dd><p>An object representing a single cell update.</p>
+</dd>
 <dt><a href="#BatchObject">BatchObject</a> : <code>Object</code></dt>
-<dd><p>This script synchronizes checkboxes across multiple sheets in the active Google Sheet.
-It&#39;s designed for a &quot;Monster Collection&quot; tracker. It also provides a developer utility
-to convert checkbox columns from formulas to boolean values, which is intended to be
-run manually from the Apps Script editor.</p>
+<dd><p>An object representing a contiguous block of updates.</p>
 </dd>
 </dl>
 
@@ -70,7 +70,7 @@ Creates batches of contiguous row updates to be applied.
 
 | Param | Type | Description |
 | --- | --- | --- |
-| updatesToApply | <code>Array.&lt;UpdateObject&gt;</code> | An array of objects, each with a rowIndex and a newValue. |
+| updatesToApply | [<code>Array.&lt;UpdateObject&gt;</code>](#UpdateObject) | An array of objects, each with a rowIndex and a newValue. |
 
 <a name="syncAllSheets"></a>
 
@@ -90,19 +90,29 @@ Syncs all configured sheets to match the state provided in the sourceDataMap.Us
 Updates the hyperlinks in column E of the 'Collection' sheet to point to thespecific cell of the monster in its corresponding location sheet.This function reads monster names from 'Collection!B' and their associated sheetlinks from 'Collection!E'. It then finds the matching monster name in the targetsheet and updates the hyperlink to point directly to the monster's cell (e.g., 'Elites'!B25).The script normalizes names to ensure matches, collapsing all whitespace (includingnewlines) into a single space for comparison. This handles variations like "Prefix Name"vs. "Prefix\nName". All original rich text formatting in the cell is preserved.Progress is logged to the Apps Script execution log.
 
 **Kind**: global function  
-<a name="BatchObject"></a>
+<a name="UpdateObject"></a>
 
-## BatchObject : <code>Object</code>
-This script synchronizes checkboxes across multiple sheets in the active Google Sheet.It's designed for a "Monster Collection" tracker. It also provides a developer utilityto convert checkbox columns from formulas to boolean values, which is intended to berun manually from the Apps Script editor.
+## UpdateObject : <code>Object</code>
+An object representing a single cell update.
 
 **Kind**: global typedef  
-**Onlycurrentdoc**:   
 **Properties**
 
 | Name | Type | Description |
 | --- | --- | --- |
 | rowIndex | <code>number</code> | The 1-based index of the row to update. |
 | newValue | <code>boolean</code> | The new boolean value for the checkbox. |
+
+<a name="BatchObject"></a>
+
+## BatchObject : <code>Object</code>
+An object representing a contiguous block of updates.
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
 | startRow | <code>number</code> | The 1-based index of the first row in the batch. |
 | values | <code>Array.&lt;Array.&lt;boolean&gt;&gt;</code> | A 2D array of checkbox values to be written. |
 

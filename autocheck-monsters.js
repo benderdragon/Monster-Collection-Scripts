@@ -4,11 +4,15 @@
  * It's designed for a "Monster Collection" tracker. It also provides a developer utility
  * to convert checkbox columns from formulas to boolean values, which is intended to be
  * run manually from the Apps Script editor.
- *
+ */
+
+/**
  * @typedef {Object} UpdateObject An object representing a single cell update.
  * @property {number} rowIndex The 1-based index of the row to update.
  * @property {boolean} newValue The new boolean value for the checkbox.
- *
+ */
+
+/**
  * @typedef {Object} BatchObject An object representing a contiguous block of updates.
  * @property {number} startRow The 1-based index of the first row in the batch.
  * @property {Array<Array<boolean>>} values A 2D array of checkbox values to be written.
