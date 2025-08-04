@@ -1,2 +1,8 @@
+# generated when running npm install for jsdoc2md
 node_modules/
+
+# link file
 *.lnk
+
+# generated AI context
+output/
