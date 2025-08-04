@@ -7,6 +7,9 @@ node_modules/
 # generated AI context
 output/
 
+# Generated documentation
+/docs/api/
+
 # Python bytecode files
 *.pyc
 __pycache__/

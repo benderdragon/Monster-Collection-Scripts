@@ -33,33 +33,62 @@ async function getAllJsFilesInDirectory(directoryPath) {
 }
 
 /**
- * Generates Markdown documentation for each JavaScript file in the project's root directory.
- * It uses `jsdoc-to-markdown` to parse JSDoc comments and saves the output to a 'docs' directory.
- * This function locates all .js files in the parent directory, processes each one,
- * and writes the generated documentation to a corresponding .md file in the 'docs' folder.
+ * Generates modular Markdown API documentation from all JavaScript files
+ * in the project's root directory, organized within a 'docs/api' folder.
+ *
+ * This function performs the following steps:
+ * 1. Locates all .js files in the project root.
+ * 2. Creates and clears the 'docs/api' directory to ensure a clean build.
+ * 3. For each .js file, it generates a corresponding .md file in 'docs/api'.
+ * 4. Generates a 'README.md' file within 'docs/api' that serves as an index,
+ *    linking to all the generated documentation files.
  * @async
  * @returns {Promise<void>} A promise that resolves when all documentation has been generated.
  */
-async function generateFileDocs() {
-  const files = await getAllJsFilesInDirectory(path.join(__dirname, '..'));
+async function generateApiDocs() {
+  try {
+    const rootDir = path.join(__dirname, '..');
+    const allJsFiles = await getAllJsFilesInDirectory(rootDir);
 
-  const outputDir = 'docs'; // Directory to save the generated Markdown files
-  await fs.mkdir(outputDir, { recursive: true }); // Ensure the output directory exists
+    // Filter out this script file to prevent it from documenting itself
+    const filesToDocument = allJsFiles.filter(
+      (file) => path.basename(file) !== 'jsdoc-to-md.js'
+    );
 
-  for (const file of files) {
-    try {
+    const outputDir = path.join(rootDir, 'docs', 'api');
+    // Ensure the output directory exists and is empty
+    await fs.rm(outputDir, { recursive: true, force: true });
+    await fs.mkdir(outputDir, { recursive: true });
+
+    const generatedFiles = [];
+
+    for (const file of filesToDocument) {
       const output = await jsdoc2md.render({ files: file });
-
-      // Create a filename for the Markdown output based on the original file name
       const baseName = path.basename(file, '.js');
-      const outputFilePath = path.join(outputDir, `${baseName}.md`);
+      const outputFileName = `${baseName}.md`;
+      const outputFilePath = path.join(outputDir, outputFileName);
 
       await fs.writeFile(outputFilePath, output);
       console.log(`Generated documentation for ${file} at ${outputFilePath}`);
-    } catch (error) {
-      console.error(`Error generating documentation for ${file}:`, error);
+      generatedFiles.push(outputFileName);
     }
+    
+    // Generate the index file (README.md)
+    const indexContent = [
+      '# API Reference',
+      '',
+      'This section contains the auto-generated API documentation for the project.',
+      '',
+      ...generatedFiles.map(file => `- [${path.basename(file, '.md')}](${file})`)
+    ].join('\n');
+    
+    const indexFilePath = path.join(outputDir, 'README.md');
+    await fs.writeFile(indexFilePath, indexContent);
+    console.log(`Generated API index at ${indexFilePath}`);
+
+  } catch (error) {
+    console.error('Error generating API documentation:', error);
   }
 }
 
-generateFileDocs();
+generateApiDocs();
