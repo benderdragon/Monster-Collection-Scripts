@@ -6,3 +6,7 @@ node_modules/
 
 # generated AI context
 output/
+
+# Python bytecode files
+*.pyc
+__pycache__/

@@ -10,6 +10,9 @@ def generate_context_markdown(
     readme_filename: str = "README.md",
     ai_instructions_filename: str = "docs/ai_instructions.md",
     optional_docs: Optional[List[str]] = None,
+    doc_folders: Optional[List[str]] = None,
+    exclude_files: Optional[List[str]] = None,
+    exclude_folders: Optional[List[str]] = None,
     max_output_characters: int = 500000,
     split_output_if_truncated: bool = False
 ):
@@ -22,8 +25,14 @@ def generate_context_markdown(
         project_name (str): The name of the project.
         readme_filename (str): The filename of the project's README.
         ai_instructions_filename (str): The filename containing AI assistant instructions.
-        optional_docs (Optional[List[str]]): A list of paths to other markdown files
+        optional_docs (Optional[List[str]]): A list of paths to specific markdown files
                                              to include in the preamble.
+        doc_folders (Optional[List[str]]): A list of directory paths to scan for
+                                           .md files to include in the preamble.
+        exclude_files (Optional[List[str]]): A list of specific file paths to exclude
+                                             from the context.
+        exclude_folders (Optional[List[str]]): A list of directory paths to exclude
+                                               from the context.
         max_output_characters (int): The maximum approximate character limit for each output file.
                                      Content will be truncated if this limit is exceeded.
         split_output_if_truncated (bool): If True, when truncation occurs, the output will
@@ -33,8 +42,23 @@ def generate_context_markdown(
     """
     project_root = Path(__file__).parent.parent
     
-    if optional_docs is None:
-        optional_docs = []
+    # --- Process exclusion lists for efficient lookup ---
+    files_to_exclude_set = {Path(p) for p in exclude_files} if exclude_files else set()
+    folders_to_exclude_set = {Path(p) for p in exclude_folders} if exclude_folders else set()
+
+    # --- Gather all documentation files from both lists ---
+    all_doc_paths = set()
+    if optional_docs:
+        all_doc_paths.update(optional_docs)
+    
+    if doc_folders:
+        for folder_str in doc_folders:
+            doc_folder_path = project_root / folder_str
+            if doc_folder_path.is_dir():
+                # Recursively find all markdown files in the folder
+                for md_file in doc_folder_path.glob('**/*.md'):
+                    relative_path_str = str(md_file.relative_to(project_root)).replace("\\", "/")
+                    all_doc_paths.add(relative_path_str)
 
     # --- SECTION 1: Project Overview (from README.md) ---
     readme_path = project_root / readme_filename
@@ -54,7 +78,8 @@ def generate_context_markdown(
     
     # --- SECTION 3: Optional Supplemental Documents ---
     optional_docs_content_list = []
-    for doc_path_str in optional_docs:
+    sorted_doc_paths = sorted(list(all_doc_paths)) # Sort for consistent order
+    for doc_path_str in sorted_doc_paths:
         doc_path = project_root / doc_path_str
         if doc_path.exists():
             # Add a header for the document based on its filename
@@ -66,7 +91,8 @@ def generate_context_markdown(
     optional_docs_str = "".join(optional_docs_content_list)
 
     # --- Build a set of all files that are part of the preamble to avoid duplicating them ---
-    preamble_files_to_ignore = {Path(p) for p in [readme_filename, ai_instructions_filename] + optional_docs}
+    preamble_files_to_ignore = {Path(p) for p in [readme_filename, ai_instructions_filename]}
+    preamble_files_to_ignore.update({Path(p) for p in all_doc_paths})
 
 
     # Function to parse .gitignore and return a list of regex patterns
@@ -116,16 +142,25 @@ def generate_context_markdown(
     def should_ignore(relative_path: Path) -> bool:
         path_str = str(relative_path).replace("\\", "/") # Standardize path separators
         
-        # Paths that are always ignored regardless of .gitignore
-        # This prevents including the context file itself or the generation script
+        # --- Check against all exclusion criteria ---
+
+        # 1. Ignore generated output files, the script itself, or preamble docs
         if Path(output_filename).stem in path_str or \
            relative_path == Path(__file__).relative_to(project_root) or \
            relative_path in preamble_files_to_ignore:
             return True
 
-        # Track the last match: True if ignored, False if negated
-        final_decision_is_ignored = False
+        # 2. Ignore files in the explicit exclusion list
+        if relative_path in files_to_exclude_set:
+            return True
 
+        # 3. Ignore paths within any of the excluded folders
+        for excluded_folder in folders_to_exclude_set:
+            if excluded_folder in relative_path.parents or relative_path == excluded_folder:
+                return True
+
+        # 4. Check against .gitignore patterns
+        final_decision_is_ignored = False
         for pattern_regex, is_negated in ignore_patterns:
             # Check if the full relative path matches the pattern
             if pattern_regex.fullmatch(path_str):
@@ -140,7 +175,6 @@ def generate_context_markdown(
                         final_decision_is_ignored = False
                     else:
                         final_decision_is_ignored = True
-
 
         return final_decision_is_ignored
 
@@ -254,11 +288,15 @@ This document is a continuation of the project codebase. Please ensure all parts
         header_content = initial_content_template if part_num == 1 else subsequent_part_header
         full_part_content = header_content + "".join(content_list) + truncation_warning + part_header_warning
         
-        with open(project_root / part_output_filename, "w", encoding="utf-8") as f:
+        # Ensure the output directory exists before writing the file.
+        full_output_path = project_root / part_output_filename
+        full_output_path.parent.mkdir(parents=True, exist_ok=True)
+        
+        with open(full_output_path, "w", encoding="utf-8") as f:
             f.write(full_part_content.strip())
         
         print(f"Successfully generated '{part_output_filename}' in the project root directory.")
-        print(f"Characters in '{part_output_filename}': {len(full_part_content.strip())}")
+        print(f"Characters in '{full_output_path}': {len(full_part_content.strip())}")
         print(f"Code files in this part: {str(files_in_this_part)}")
         
         # Clear for next part
@@ -334,19 +372,29 @@ This document is a continuation of the project codebase. Please ensure all parts
             files_in_this_part=len(code_files_included_in_current_part)
         )
 
-    print(f"\nSuccessfully generated project context file(s) in the project root directory.")
-    print(f"Total eligible code files: {num_of_eligible_files}")
-    print(f"Total code files included across all parts: {len(all_files_included_across_parts)}")
+    # --- FINAL SUMMARY REPORT ---
+    print("\n--- Summary of Generated Context ---")
     
-    print("\n--- Files included in project_context.md (or its parts) ---")
+    # List all documentation files that were included in the preamble.
+    print(f"\n--- Documentation Files Included in Preamble ({str(len(sorted_doc_paths))}) ---")
+    if sorted_doc_paths:
+        for doc_path in sorted_doc_paths:
+            print(f"- {doc_path}")
+    else:
+        print("No optional documentation files were found or included.")
+    print("------------------------------------------")
+
+    # List all codebase files that were included.
+    print(f"\n--- Codebase Files Included ({str(len(all_files_included_across_parts))}/{str(num_of_eligible_files)}) ---")
     if all_files_included_across_parts:
         for file_path_str in all_files_included_across_parts:
             print(f"- {file_path_str}")
         if len(all_files_included_across_parts) < num_of_eligible_files:
             print(f"... and {str(num_of_eligible_files - len(all_files_included_across_parts))} more files were omitted due to character limit.")
     else:
-        print("No code files were included (either none found or all filtered/truncated).")
-    print("-------------------------------------------\n")
+        print("No codebase files were included (either none found or all filtered/truncated).")
+    print("------------------------------------------\n")
+    
 
     print("Please review the content.")
     if current_part_number > 1:
@@ -355,13 +403,3 @@ This document is a continuation of the project codebase. Please ensure all parts
         print("Start with Part 1, then Part 2, and so on.")
     else:
         print("\nWhen starting a new conversation with an AI, copy the *entire content* of this file into the prompt.")
-
-
-if __name__ == "__main__":
-    generate_context_markdown(
-        project_name="Monster Collection Scripts",
-        optional_docs=[
-            "docs/autocheck-monsters-guide.md"
-        ],
-        split_output_if_truncated=True # Set to True to enable multi-file output if truncated
-    )
