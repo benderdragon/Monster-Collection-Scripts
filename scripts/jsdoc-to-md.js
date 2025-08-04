@@ -1,7 +1,18 @@
+/**
+ * @file Generates Markdown documentation from JSDoc comments in JavaScript files.
+ * @author The AI Assistant
+ */
+
 const jsdoc2md = require('jsdoc-to-markdown');
 const fs = require('fs').promises;
 const path = require('path');
 
+/**
+ * Scans a directory for all .js files.
+ * @async
+ * @param {string} directoryPath - The path to the directory to search.
+ * @returns {Promise<string[]>} A promise that resolves to an array of file paths for all .js files found.
+ */
 async function getAllJsFilesInDirectory(directoryPath) {
     const jsFiles = [];
 
@@ -21,6 +32,14 @@ async function getAllJsFilesInDirectory(directoryPath) {
     return jsFiles;
 }
 
+/**
+ * Generates Markdown documentation for each JavaScript file in the project's root directory.
+ * It uses `jsdoc-to-markdown` to parse JSDoc comments and saves the output to a 'docs' directory.
+ * This function locates all .js files in the parent directory, processes each one,
+ * and writes the generated documentation to a corresponding .md file in the 'docs' folder.
+ * @async
+ * @returns {Promise<void>} A promise that resolves when all documentation has been generated.
+ */
 async function generateFileDocs() {
   const files = await getAllJsFilesInDirectory(path.join(__dirname, '..'));
 
