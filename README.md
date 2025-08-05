@@ -116,3 +116,11 @@ This section contains the auto-generated API documentation for the project. It i
 -   [external-import-export](docs/api/external-import-export.md)
 -   [update-links](docs/api/update-links.md)
 -   [utils](docs/api/utils.md)
+
+## Development Note
+
+This project was developed in a collaborative, pair-programming style with an AI assistant. The human developer provided high-level requirements, guidance, debugging, and feedback, while the AI assistant wrote the majority of the code. This serves as an example of a modern, AI-augmented development workflow.
+
+## License
+
+This project is licensed under the MIT License. See the `LICENSE` file for details.
