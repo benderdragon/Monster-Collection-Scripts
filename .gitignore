@@ -8,7 +8,7 @@ node_modules/
 output/
 
 # Generated documentation
-/docs/api/
+# /docs/api/
 
 # Python bytecode files
 *.pyc
