@@ -34,7 +34,7 @@ async function getAllJsFilesInDirectory(directoryPath) {
 
 /**
  * Generates modular Markdown API documentation from all JavaScript files
- * in the project's root directory, organized within a 'docs/api' folder.
+ * in the project's 'src' directory, organized within a 'docs/api' folder.
  * This function implements a caching mechanism: documentation for a source file
  * is only regenerated if the source file has been modified more recently
  * than its corresponding generated Markdown file, or if the Markdown file
@@ -46,12 +46,8 @@ async function getAllJsFilesInDirectory(directoryPath) {
 async function generateApiDocs() {
   try {
     const rootDir = path.join(__dirname, '..');
-    const sourceFiles = await getAllJsFilesInDirectory(rootDir);
-
-    // Filter out this script file to prevent it from documenting itself
-    const filesToDocument = sourceFiles.filter(
-      (file) => path.basename(file) !== 'jsdoc-to-md.js'
-    );
+    const sourceDir = path.join(rootDir, 'src'); // Point to the 'src' directory
+    const sourceFiles = await getAllJsFilesInDirectory(sourceDir);
 
     const outputDir = path.join(rootDir, 'docs', 'api');
     await fs.mkdir(outputDir, { recursive: true }); // Ensure the output directory exists
@@ -69,7 +65,7 @@ async function generateApiDocs() {
     const currentGeneratedFileNames = new Set(); // Names of .md files that *should* exist
     let documentationUpdated = false; // Flag to track if any file was regenerated or removed
 
-    for (const file of filesToDocument) {
+    for (const file of sourceFiles) {
       const baseName = path.basename(file, '.js');
       const outputFileName = `${baseName}.md`;
       const outputFilePath = path.join(outputDir, outputFileName);
