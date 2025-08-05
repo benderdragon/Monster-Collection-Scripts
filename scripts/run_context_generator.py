@@ -5,5 +5,6 @@ if __name__ == "__main__":
         project_name="Monster Collection Scripts",
         doc_folders=["docs"],
         exclude_files=["package-lock.json"],
+        exclude_folders=[".git", ".husky/_"],
         split_output_if_truncated=True # Set to True to enable multi-file output if truncated
     )
