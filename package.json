@@ -1,5 +1,9 @@
 {
   "devDependencies": {
+    "husky": "^9.1.7",
     "jsdoc-to-markdown": "^9.1.2"
+  },
+  "scripts": {
+    "prepare": "husky"
   }
 }
