@@ -1,9 +1,16 @@
 {
   "devDependencies": {
     "husky": "^9.1.7",
-    "jsdoc-to-markdown": "^9.1.2"
+    "jsdoc-to-markdown": "^9.1.2",
+    "lint-staged": "^16.1.4"
   },
   "scripts": {
     "prepare": "husky"
+  },
+  "lint-staged": {
+    "src/*.js": [
+      "node scripts/jsdoc-to-md.js",
+      "git add docs/api/"
+    ]
   }
 }
