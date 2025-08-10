@@ -1,15 +1,30 @@
 {
   "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@eslint/json": "^0.13.1",
+    "@eslint/markdown": "^7.1.0",
+    "eslint": "~9.32.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-googleappsscript": "^1.0.5",
+    "eslint-plugin-jsdoc": "^52.0.4",
+    "globals": "^16.3.0",
     "husky": "^9.1.7",
     "jsdoc-to-markdown": "^9.1.2",
-    "lint-staged": "^16.1.4"
+    "lint-staged": "^16.1.4",
+    "prettier": "3.6.2"
   },
   "scripts": {
-    "prepare": "husky"
+    "prepare": "husky",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "format": "prettier --write src/",
+    "docs:gen": "node scripts/jsdoc-to-md.js"
   },
   "lint-staged": {
     "src/*.js": [
-      "node scripts/jsdoc-to-md.js",
+      "prettier --write",
+      "eslint --fix",
+      "npm run docs:gen",
       "git add docs/api/"
     ]
   }

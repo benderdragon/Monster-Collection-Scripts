@@ -1,10 +1,11 @@
+"use strict";
+
 /**
  * @OnlyCurrentDoc
  */
 
 /**
  * Combines values and formulas arrays into a single 2D array, prioritizing formulas.
- *
  * @param {any[][]} values The 2D array of cell values.
  * @param {string[][]} formulas The 2D array of cell formulas.
  * @returns {any[][]} A new 2D array with formulas taking precedence over values.
@@ -14,7 +15,9 @@
 function combineValuesAndFormulas_(values, formulas) {
   const numRows = formulas.length;
   if (numRows !== values.length) {
-    throw new Error(`Row dimension mismatch: formulas has ${numRows} rows, but values has ${values.length} rows.`);
+    throw new Error(
+      `Row dimension mismatch: formulas has ${numRows} rows, but values has ${values.length} rows.`
+    );
   }
 
   if (numRows === 0) {
@@ -22,35 +25,38 @@ function combineValuesAndFormulas_(values, formulas) {
   }
   const combinedData = new Array(numRows);
 
-  for (let r = 0; r < numRows; r++) {
-    const numCols = formulas[r].length;
-    if (numCols !== values[r].length) {
-      throw new Error(`Column dimension mismatch in row ${r}: formulas has ${numCols} columns, but values has ${values[r].length} columns.`);
+  for (let rowNum = 0; rowNum < numRows; rowNum++) {
+    const numCols = formulas[rowNum].length;
+    if (numCols !== values[rowNum].length) {
+      throw new Error(
+        `Column dimension mismatch in row ${rowNum}: formulas has ${numCols} columns, but values has ${values[rowNum].length} columns.`
+      );
     }
     const row = new Array(numCols);
-    for (let c = 0; c < numCols; c++) {
-      if (formulas[r][c]) {
-        row[c] = formulas[r][c];
+    for (let colNum = 0; colNum < numCols; colNum++) {
+      if (formulas[rowNum][colNum]) {
+        row[colNum] = formulas[rowNum][colNum];
       } else {
-        row[c] = values[r][c];
+        row[colNum] = values[rowNum][colNum];
       }
     }
-    combinedData[r] = row;
+    combinedData[rowNum] = row;
   }
   return combinedData;
 }
 
 /**
  * Imports data from a range, preserving formulas.
- *
  * @param {GoogleAppsScript.Spreadsheet.Range} range The range to import data from.
  * @returns {any[][]} A 2D array of combined values and formulas.
  * @throws {Error} If the provided range is invalid.
  * @private
  */
 function importRange_(range) {
-  if (!range || typeof range.getA1Notation !== 'function') {
-    throw new Error('Invalid input: "range" must be a valid Apps Script Range object.');
+  if (!range || typeof range.getA1Notation !== "function") {
+    throw new Error(
+      'Invalid input: "range" must be a valid Apps Script Range object.'
+    );
   }
   console.log(`Importing data from range: ${range.getA1Notation()}`);
   const values = range.getValues();
@@ -60,7 +66,6 @@ function importRange_(range) {
 
 /**
  * Exports data to a range by combining separate values and formulas arrays.
- *
  * @param {GoogleAppsScript.Spreadsheet.Range} range The range to export data to.
  * @param {any[][]} values The 2D array of values.
  * @param {string[][]} formulas The 2D array of formulas.
@@ -68,8 +73,10 @@ function importRange_(range) {
  * @private
  */
 function exportRange_(range, values, formulas) {
-  if (!range || typeof range.getA1Notation !== 'function') {
-    throw new Error('Invalid input: "range" must be a valid Apps Script Range object.');
+  if (!range || typeof range.getA1Notation !== "function") {
+    throw new Error(
+      'Invalid input: "range" must be a valid Apps Script Range object.'
+    );
   }
   console.log(`Exporting data to range: ${range.getA1Notation()}`);
   const combinedData = combineValuesAndFormulas_(values, formulas);
@@ -86,11 +93,10 @@ function exportRange_(range, values, formulas) {
 /**
  * Normalizes a string by converting it to a string, trimming whitespace from both ends,
  * and collapsing multiple whitespace characters into a single space.
- *
  * @param {*} str The input to normalize.
  * @returns {string} The normalized string.
  * @private
  */
 function normalizeString_(str) {
-  return str.toString().trim().replace(/\s+/g, ' ');
+  return str.toString().trim().replace(/\s+/gv, " ");
 }

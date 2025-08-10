@@ -1,0 +1,6 @@
+# NPM and build artifacts
+node_modules/
+package-lock.json
+
+# Generated documentation
+docs/api/

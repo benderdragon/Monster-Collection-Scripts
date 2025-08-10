@@ -1,3 +1,5 @@
+"use strict";
+
 /**
  * @OnlyCurrentDoc
  *
@@ -7,6 +9,9 @@
  * preserve spilled results.
  */
 
+const LETTERS_IN_ALPHABET = 26;
+const ASCII_CHAR_CODE_FOR_A = 65;
+
 /**
  * Helper function to convert a 1-based column number to its A1 letter representation.
  * E.g., 1 -> A, 2 -> B, 27 -> AA
@@ -14,11 +19,11 @@
  * @returns {string} The A1 letter representation.
  */
 function columnToLetter(column) {
-  let temp, letter = '';
+  let letter = "";
   while (column > 0) {
-    temp = (column - 1) % 26;
-    letter = String.fromCharCode(temp + 65) + letter;
-    column = (column - temp - 1) / 26;
+    const temp = (column - 1) % LETTERS_IN_ALPHABET;
+    letter = String.fromCharCode(temp + ASCII_CHAR_CODE_FOR_A) + letter;
+    column = (column - temp - 1) / LETTERS_IN_ALPHABET;
   }
   return letter;
 }
@@ -30,19 +35,22 @@ function columnToLetter(column) {
  * @returns {{row: number, col: number}} An object with 0-indexed row and column.
  */
 function parseA1(a1Notation) {
-  const match = a1Notation.match(/^([A-Z]+)(\d+)$/);
+  const match = a1Notation.match(/^(?<letters>[A-Z]+)(?<num>\d+)$/v);
   if (!match) {
     throw new Error(`Invalid A1 notation: ${a1Notation}`);
   }
-  const colLetters = match[1];
-  const rowNum = parseInt(match[2], 10);
+  const colLetters = match.groups.letters;
+  const rowNum = parseInt(match.groups.num, 10);
 
   let col = 0;
-  for (let i = 0; i < colLetters.length; i++) {
-    col = col * 26 + (colLetters.charCodeAt(i) - 'A'.charCodeAt(0) + 1);
+  for (let idx = 0; idx < colLetters.length; idx++) {
+    col =
+      col * LETTERS_IN_ALPHABET +
+      (colLetters.charCodeAt(idx) - "A".charCodeAt(0) + 1);
   }
 
-  return { row: rowNum - 1, col: col - 1 }; // Convert to 0-based
+  // Convert to 0-based
+  return { row: rowNum - 1, col: col - 1 };
 }
 
 /**
@@ -51,11 +59,11 @@ function parseA1(a1Notation) {
  * @returns {boolean} True if the string matches a supported date format, false otherwise.
  */
 function isSupportedDateString(str) {
-  if (typeof str !== 'string') return false;
+  if (typeof str !== "string") return false;
   // Regex to check for ISO 8601 format (YYYY-MM-DDTHH:mm:ss.sssZ)
-  const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d{3})?Z$/;
+  const isoRegex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d{3})?Z$/v;
   // Regex to check for MM/DD/YYYY format.
-  const usFormatRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/;
+  const usFormatRegex = /^\d{1,2}\/\d{1,2}\/\d{4}$/v;
   return isoRegex.test(str) || usFormatRegex.test(str);
 }
 
@@ -76,24 +84,27 @@ function tryParseDate(value) {
   return value;
 }
 
-
+/* exported exportCellContentAndFormulasOptimized */
 /**
  * Exports all cell content (values and formulas) from the active Google Spreadsheet
  * to a JSON file in Google Drive. This script is optimized to minimize API calls.
  */
 function exportCellContentAndFormulasOptimized() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const allCellData = {}; // Will store both values and formulas
-  const ui = SpreadsheetApp.getUi(); // Get the UI for alerts
+
+  // Store both values and formulas
+  const allCellData = {};
 
   console.log("Starting export process...");
 
-  spreadsheet.getSheets().forEach(sheet => {
+  spreadsheet.getSheets().forEach((sheet) => {
     const sheetName = sheet.getName();
     const lastRow = sheet.getLastRow();
     const lastColumn = sheet.getLastColumn();
 
-    console.log(`Processing sheet: "${sheetName}" (Last Row: ${lastRow}, Last Column: ${lastColumn})`);
+    console.log(
+      `Processing sheet: "${sheetName}" (Last Row: ${lastRow}, Last Column: ${lastColumn})`
+    );
 
     if (lastRow === 0 || lastColumn === 0) {
       console.log(`Skipping empty sheet: "${sheetName}"`);
@@ -101,23 +112,29 @@ function exportCellContentAndFormulasOptimized() {
     }
 
     const range = sheet.getRange(1, 1, lastRow, lastColumn);
-    const values = range.getValues();     // 2D array of displayed values
-    const formulas = range.getFormulas(); // 2D array of formula strings (empty string if no formula)
+
+    // 2D array of displayed values
+    const values = range.getValues();
+
+    // 2D array of formula strings (empty string if no formula)
+    const formulas = range.getFormulas();
 
     const sheetData = {};
-    for (let r = 0; r < values.length; r++) {
-      for (let c = 0; c < values[r].length; c++) {
-        const value = values[r][c];
-        const formula = formulas[r][c];
+    for (let row = 0; row < values.length; row++) {
+      for (let col = 0; col < values[row].length; col++) {
+        const value = values[row][col];
+        const formula = formulas[row][col];
 
         // Only process if there's any content (value or formula)
         if (value !== "" || formula !== "") {
           // Construct A1 notation manually
-          const a1Notation = columnToLetter(c + 1) + String(r + 1);
+          const a1Notation = columnToLetter(col + 1) + String(row + 1);
 
-          if (formula) { // If there's a formula, store the formula string
+          // If there's a formula, store the formula string
+          if (formula) {
             sheetData[a1Notation] = formula;
-          } else { // Otherwise, store the displayed value
+          } else {
+            // Otherwise, store the displayed value
             sheetData[a1Notation] = value;
           }
         }
@@ -126,24 +143,23 @@ function exportCellContentAndFormulasOptimized() {
     allCellData[sheetName] = sheetData;
   });
 
-  // Convert to JSON string
-  const jsonOutput = JSON.stringify(allCellData, null, 2); // null, 2 for pretty printing
+  // Convert to JSON string, pretty-printing with 2 spaces per tab
+  const SPACING = 2;
+  const jsonOutput = JSON.stringify(allCellData, null, SPACING);
 
   // --- Save to a Google Drive file ---
-  const fileName = `${spreadsheet.getName()}_content_and_formulas_${new Date().toISOString().replace(/:/g, '-')}.json`;
+  const fileName = `${spreadsheet.getName()}_content_and_formulas_${new Date().toISOString().replace(/:/gv, "-")}.json`;
   try {
-    DriveApp.createFile(fileName, jsonOutput, 'application/json');
+    DriveApp.createFile(fileName, jsonOutput, "application/json");
     console.log(`Saved JSON file to Google Drive: '${fileName}'`);
-    ui.alert("Export Complete!", `Content and formulas saved as '${fileName}' to your Google Drive.`, ui.ButtonSet.OK);
-  } catch (e) {
-    console.log(`Error saving file to Drive: ${e.message}`);
-    ui.alert("Export Error", `Could not save file to Google Drive. Error: ${e.message}`, ui.ButtonSet.OK);
+  } catch (err) {
+    console.log(`Error saving file to Drive: ${err.message}`);
   }
 
   console.log("Export process finished.");
 }
 
-
+/* exported importCellContentAndFormulasOptimized */
 /**
  * Imports cell content (values and formulas) into the active Google Spreadsheet
  * from a JSON file located in Google Drive. This script uses a two-phase approach
@@ -153,54 +169,52 @@ function importCellContentAndFormulasOptimized() {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const ui = SpreadsheetApp.getUi();
 
-  console.log('Import: Starting import process');
+  console.log("Import: Starting import process");
 
   // 1. Prompt user for JSON file name
   const fileNameResponse = ui.prompt(
-    'Import JSON File',
+    "Import JSON File",
     'Enter the name of the JSON file to import from Google Drive (e.g., "MySpreadsheet_content_and_formulas_...json"): ',
     ui.ButtonSet.OK_CANCEL
   );
   if (fileNameResponse.getSelectedButton() !== ui.Button.OK) {
     // User clicked "Cancel" or closed the dialog
-    console.log('Import: User cancelled at file prompt');
-    ui.alert("Import Cancelled", "The import operation was cancelled.", ui.ButtonSet.OK);
+    console.log("Import: User cancelled at file prompt");
     return;
   }
   const jsonFileName = fileNameResponse.getResponseText();
   if (!jsonFileName) {
-    console.log('Import: No file name entered');
-    ui.alert("Error", "No file name entered. Import cancelled.", ui.ButtonSet.OK);
+    console.log("Import: No file name entered");
     return;
   }
   console.log(`Import: Loading JSON file '${jsonFileName}'`);
 
   // 2. Find and read the JSON file
-  let file;
+  // eslint-disable-next-line no-useless-assignment -- Known limitation, used in try block
+  let file = null;
   try {
     const files = DriveApp.getFilesByName(jsonFileName);
-    if (!files.hasNext()) throw new Error('File not found');
+    if (!files.hasNext()) throw new Error("File not found");
     file = files.next();
     console.log(`Import: Found file '${file.getName()}' (ID: ${file.getId()})`);
-  } catch (e) {
-    console.log(`Import: Error finding file - ${e.message}`);
-    ui.alert("File Error", `Could not find or open "${jsonFileName}". Please ensure the name is exact.`, ui.ButtonSet.OK);
+  } catch (err) {
+    console.log(`Import: Error finding file - ${err.message}`);
     return;
   }
 
-  let importedData;
+  // eslint-disable-next-line no-useless-assignment -- Known limitation, used in try block
+  let importedData = null;
   try {
     importedData = JSON.parse(file.getBlob().getDataAsString());
-    console.log('Import: JSON parsed successfully');
-  } catch (e) {
-    console.log(`Import: JSON parse error - ${e.message}`);
-    ui.alert("JSON Parse Error", `The content of "${jsonFileName}" is not valid JSON.`, ui.ButtonSet.OK);
+    console.log("Import: JSON parsed successfully");
+  } catch (err) {
+    console.log(`Import: JSON parse error - ${err.message}`);
     return;
   }
 
   let sheetsProcessedCount = 0;
   const sheetNames = Object.keys(importedData);
-  console.log(`Import: Sheets to process - ${sheetNames.join(', ')}`);
+  console.log(`Import: Sheets to process - ${sheetNames.join(", ")}`);
 
   // Loop through each sheet in the JSON
   for (const sheetName of sheetNames) {
@@ -224,46 +238,64 @@ function importCellContentAndFormulasOptimized() {
 
     // If no content in JSON for this sheet, skip it
     if (maxRow === 0 || maxCol === 0) {
-      console.log(`Import: No content found in sheet '${sheetName}', skipping.`);
+      console.log(
+        `Import: No content found in sheet '${sheetName}', skipping.`
+      );
       sheetsProcessedCount++;
       continue;
     }
 
     // Resize sheet if necessary to accommodate data before clearing
     if (targetSheet.getMaxRows() < maxRow) {
-      targetSheet.insertRowsAfter(targetSheet.getMaxRows(), maxRow - targetSheet.getMaxRows());
+      targetSheet.insertRowsAfter(
+        targetSheet.getMaxRows(),
+        maxRow - targetSheet.getMaxRows()
+      );
     }
     if (targetSheet.getMaxColumns() < maxCol) {
-      targetSheet.insertColumnsAfter(targetSheet.getMaxColumns(), maxCol - targetSheet.getMaxColumns());
+      targetSheet.insertColumnsAfter(
+        targetSheet.getMaxColumns(),
+        maxCol - targetSheet.getMaxColumns()
+      );
     }
 
     const targetRange = targetSheet.getRange(1, 1, maxRow, maxCol);
-    
+
     // --- Phase 1: Clear Target Sheet & Import Formulas Only ---
     console.log(`Import: Phase 1 (Clear & Formulas) for '${sheetName}'`);
     targetRange.clearContent();
 
-    const formulasToSet = Array(maxRow).fill(0).map(() => Array(maxCol).fill(''));
+    const formulasToSet = Array(maxRow)
+      .fill(0)
+      .map(() => Array(maxCol).fill(""));
     for (const a1Notation in sheetContent) {
       const content = sheetContent[a1Notation];
       const { row, col } = parseA1(a1Notation);
-      if (typeof content === 'string' && content.startsWith('=')) {
+      if (typeof content === "string" && content.startsWith("=")) {
         formulasToSet[row][col] = content;
       }
     }
     targetRange.setFormulas(formulasToSet);
-    console.log(`Import: Formulas written for '${sheetName}', waiting for spills...`);
+    console.log(
+      `Import: Formulas written for '${sheetName}', waiting for spills...`
+    );
 
     // Small delay to allow formulas to calculate and spill.
-    Utilities.sleep(1000);
+    const SLEEP_DURATION = 1000;
+    Utilities.sleep(SLEEP_DURATION);
 
     // --- Phase 2: Read Current State & Conditionally Overlay Static Values ---
-    console.log(`Import: Phase 2 (Capture spills & overlay values) for '${sheetName}'`);
-    const currentValues = targetRange.getValues();   // Contains spills and static values
-    const currentFormulas = targetRange.getFormulas(); // Contains formula strings if cell is source
+    console.log(
+      `Import: Phase 2 (Capture spills & overlay values) for '${sheetName}'`
+    );
+
+    // Contains spills and static values
+    const currentValues = targetRange.getValues();
+    // Contains formula strings if cell is source
+    const currentFormulas = targetRange.getFormulas();
 
     // Initialize a new grid with the formulas to preserve them.
-    const finalValuesToSet = currentFormulas.map(row => [...row]);
+    const finalValuesToSet = currentFormulas.map((row) => [...row]);
 
     // Overlay the JSON’s static contents (non-formulas) onto the grid, but only
     // into cells that are truly empty (not a formula and not a spilled value).
@@ -272,13 +304,13 @@ function importCellContentAndFormulasOptimized() {
       const { row, col } = parseA1(a1Notation);
 
       // Skip formulas, as they are already in our grid.
-      if (typeof content === 'string' && content.startsWith('=')) {
+      if (typeof content === "string" && content.startsWith("=")) {
         continue;
       }
-      
+
       // Only write static content if the target cell has no formula and no spilled value.
-      if (currentFormulas[row][col] === '' && currentValues[row][col] === '') {
-         finalValuesToSet[row][col] = tryParseDate(content);
+      if (currentFormulas[row][col] === "" && currentValues[row][col] === "") {
+        finalValuesToSet[row][col] = tryParseDate(content);
       }
     }
 
@@ -289,9 +321,4 @@ function importCellContentAndFormulasOptimized() {
   }
 
   console.log(`Import: Complete. Processed ${sheetsProcessedCount} sheet(s).`);
-  ui.alert(
-    "Import Complete",
-    `Successfully imported data from "${jsonFileName}". Processed ${sheetsProcessedCount} sheet(s).`,
-    ui.ButtonSet.OK
-  );
 }
