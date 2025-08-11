@@ -1,3 +1,10 @@
+## Constants
+
+<dl>
+<dt><a href="#LETTERS_IN_ALPHABET">LETTERS_IN_ALPHABET</a></dt>
+<dd></dd>
+</dl>
+
 ## Functions
 
 <dl>
@@ -27,6 +34,14 @@ to correctly import formulas and their spilled results.</p>
 </dd>
 </dl>
 
+<a name="LETTERS_IN_ALPHABET"></a>
+
+## LETTERS\_IN\_ALPHABET
+**Kind**: global constant  
+**Onlycurrentdoc**: This script provides functions to export and import spreadsheet data (values and formulas)
+to and from a JSON file stored in Google Drive. This allows for backing up and restoring
+a spreadsheet's state. The import process is optimized to handle array formulas and
+preserve spilled results.  
 <a name="columnToLetter"></a>
 
 ## columnToLetter(column) ⇒ <code>string</code>

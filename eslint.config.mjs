@@ -42,8 +42,8 @@ export default defineConfig([
       "guard-for-in": "off", // No guard needed because there is no inheritance used
       "jsdoc/check-tag-names": ["error", { definedTags: ["OnlyCurrentDoc"] }],
       "max-lines-per-function": "warn", // Temporary warning until functions are cleaned up
-      "max-statements": "warn", // Temporary warning until functions are cleaned up
-      "max-lines": "warn", // Temporary warning until functions are cleaned up
+      "max-statements": ["error", 15], // Increase from 10 to 15
+      "max-lines": ["error", 350],     // Increase from 300 to 350
       "no-console": "off", // console.log is used for Apps Script logging
       "no-inline-comments": ["error", { "ignorePattern": "Column \\w+" }], // Map to column number
       "no-implicit-globals": "off", // Apps Script functions can only be in global scope

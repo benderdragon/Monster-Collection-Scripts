@@ -8,7 +8,7 @@ const fs = require('fs').promises;
 const path = require('path');
 
 /**
- * Scans a directory for all .js files.
+ * Recursively scans a directory and all subdirectories for .js files.
  * @async
  * @param {string} directoryPath - The path to the directory to search.
  * @returns {Promise<string[]>} A promise that resolves to an array of file paths for all .js files found.
@@ -24,7 +24,11 @@ async function getAllJsFilesInDirectory(directoryPath) {
         const filePath = path.join(directoryPath, file);
         const stats = await fs.stat(filePath); // Await fs.stat for file information
 
-        if (stats.isFile() && path.extname(file) === '.js') {
+        if (stats.isDirectory()) {
+            // Recursively scan subdirectories
+            const subDirectoryFiles = await getAllJsFilesInDirectory(filePath);
+            jsFiles.push(...subDirectoryFiles);
+        } else if (stats.isFile() && path.extname(file) === '.js') {
             jsFiles.push(filePath);
         }
     }
