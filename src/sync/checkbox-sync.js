@@ -24,6 +24,18 @@
  */
 
 /**
+ * @typedef {object} ValidationResult Result of validating an edit event.
+ * @property {boolean} valid Whether the edit event should trigger synchronization.
+ * @property {string} [sheetName] The name of the sheet that was edited (only present if valid is true).
+ */
+
+/**
+ * @typedef {object} TargetSheetData Data structure containing information from a target sheet for synchronization.
+ * @property {Array<Array<*>>} targetData 2D array of values from the target sheet.
+ * @property {Array<Array<string>>} targetFormulas 2D array of formulas from the target sheet.
+ */
+
+/**
  * Determines if a cell should be skipped during synchronization.
  * @param {boolean} hasFormula Whether the cell contains a formula.
  * @param {string} monsterName The monster name from the row.
@@ -36,7 +48,7 @@ function shouldSkipCell_(hasFormula, monsterName) {
 /**
  * Reads target sheet data including values, formulas, and names.
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet The sheet to read from.
- * @returns {object|null} Object containing targetData and targetFormulas, or null if empty.
+ * @returns {TargetSheetData|null} Object containing targetData and targetFormulas, or null if empty.
  */
 function readTargetSheetData_(sheet) {
   const lastRow = sheet.getLastRow();
@@ -201,7 +213,7 @@ function syncAllSheets_(sourceDataMap, originatingSheetName) {
 /**
  * Validates if the edit event should trigger synchronization.
  * @param {object} event The event object from onEdit trigger.
- * @returns {{valid: boolean, sheetName: string}|{valid: boolean}} Validation result with sheet info.
+ * @returns {ValidationResult} Validation result with sheet info.
  */
 function validateEditEvent_(event) {
   const range = event.range;

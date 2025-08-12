@@ -4,7 +4,7 @@
 <dt><a href="#shouldSkipCell_">shouldSkipCell_(hasFormula, monsterName)</a> ⇒ <code>boolean</code></dt>
 <dd><p>Determines if a cell should be skipped during synchronization.</p>
 </dd>
-<dt><a href="#readTargetSheetData_">readTargetSheetData_(sheet)</a> ⇒ <code>object</code> | <code>null</code></dt>
+<dt><a href="#readTargetSheetData_">readTargetSheetData_(sheet)</a> ⇒ <code><a href="#TargetSheetData">TargetSheetData</a></code> | <code>null</code></dt>
 <dd><p>Reads target sheet data including values, formulas, and names.</p>
 </dd>
 <dt><a href="#findUpdatesForSheet_">findUpdatesForSheet_(sheetData, sourceDataMap)</a> ⇒ <code><a href="#UpdateObject">Array.&lt;UpdateObject&gt;</a></code></dt>
@@ -20,7 +20,7 @@
 <dd><p>Syncs all configured sheets to match the state provided in the sourceDataMap.
 Uses batch operations to read and write data for maximum performance, skipping formulas.</p>
 </dd>
-<dt><a href="#validateEditEvent_">validateEditEvent_(event)</a> ⇒ <code>Object</code> | <code>Object</code></dt>
+<dt><a href="#validateEditEvent_">validateEditEvent_(event)</a> ⇒ <code><a href="#ValidationResult">ValidationResult</a></code></dt>
 <dd><p>Validates if the edit event should trigger synchronization.</p>
 </dd>
 <dt><a href="#extractMonsterDataFromSheet_">extractMonsterDataFromSheet_(sheet)</a> ⇒ <code>Map.&lt;string, boolean&gt;</code> | <code>null</code></dt>
@@ -41,6 +41,12 @@ It reads the entire state of the edited sheet and triggers a full synchronizatio
 <dt><a href="#BatchObject">BatchObject</a> : <code>object</code></dt>
 <dd><p>An object representing a contiguous block of updates.</p>
 </dd>
+<dt><a href="#ValidationResult">ValidationResult</a> : <code>object</code></dt>
+<dd><p>Result of validating an edit event.</p>
+</dd>
+<dt><a href="#TargetSheetData">TargetSheetData</a> : <code>object</code></dt>
+<dd><p>Data structure containing information from a target sheet for synchronization.</p>
+</dd>
 </dl>
 
 <a name="shouldSkipCell_"></a>
@@ -58,11 +64,11 @@ Determines if a cell should be skipped during synchronization.
 
 <a name="readTargetSheetData_"></a>
 
-## readTargetSheetData\_(sheet) ⇒ <code>object</code> \| <code>null</code>
+## readTargetSheetData\_(sheet) ⇒ [<code>TargetSheetData</code>](#TargetSheetData) \| <code>null</code>
 Reads target sheet data including values, formulas, and names.
 
 **Kind**: global function  
-**Returns**: <code>object</code> \| <code>null</code> - Object containing targetData and targetFormulas, or null if empty.  
+**Returns**: [<code>TargetSheetData</code>](#TargetSheetData) \| <code>null</code> - Object containing targetData and targetFormulas, or null if empty.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -109,8 +115,7 @@ Applies batched updates to a target sheet.
 <a name="syncAllSheets_"></a>
 
 ## syncAllSheets\_(sourceDataMap, originatingSheetName)
-Syncs all configured sheets to match the state provided in the sourceDataMap.
-Uses batch operations to read and write data for maximum performance, skipping formulas.
+Syncs all configured sheets to match the state provided in the sourceDataMap.Uses batch operations to read and write data for maximum performance, skipping formulas.
 
 **Kind**: global function  
 
@@ -121,11 +126,11 @@ Uses batch operations to read and write data for maximum performance, skipping f
 
 <a name="validateEditEvent_"></a>
 
-## validateEditEvent\_(event) ⇒ <code>Object</code> \| <code>Object</code>
+## validateEditEvent\_(event) ⇒ [<code>ValidationResult</code>](#ValidationResult)
 Validates if the edit event should trigger synchronization.
 
 **Kind**: global function  
-**Returns**: <code>Object</code> \| <code>Object</code> - Validation result with sheet info.  
+**Returns**: [<code>ValidationResult</code>](#ValidationResult) - Validation result with sheet info.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -146,8 +151,7 @@ Reads and processes monster data from the source sheet into a normalized map.
 <a name="onEdit"></a>
 
 ## onEdit(event)
-The main trigger function that runs automatically when a user edits the spreadsheet.
-It reads the entire state of the edited sheet and triggers a full synchronization.
+The main trigger function that runs automatically when a user edits the spreadsheet.It reads the entire state of the edited sheet and triggers a full synchronization.
 
 **Kind**: global function  
 **See**: https://developers.google.com/apps-script/guides/triggers/events  
@@ -181,4 +185,30 @@ An object representing a contiguous block of updates.
 | --- | --- | --- |
 | startRow | <code>number</code> | The 1-based index of the first row in the batch. |
 | values | <code>Array.&lt;Array.&lt;boolean&gt;&gt;</code> | A 2D array of checkbox values to be written. |
+
+<a name="ValidationResult"></a>
+
+## ValidationResult : <code>object</code>
+Result of validating an edit event.
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| valid | <code>boolean</code> | Whether the edit event should trigger synchronization. |
+| [sheetName] | <code>string</code> | The name of the sheet that was edited (only present if valid is true). |
+
+<a name="TargetSheetData"></a>
+
+## TargetSheetData : <code>object</code>
+Data structure containing information from a target sheet for synchronization.
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| targetData | <code>Array.&lt;Array.&lt;\*&gt;&gt;</code> | 2D array of values from the target sheet. |
+| targetFormulas | <code>Array.&lt;Array.&lt;string&gt;&gt;</code> | 2D array of formulas from the target sheet. |
 

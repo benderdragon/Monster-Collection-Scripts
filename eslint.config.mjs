@@ -42,12 +42,12 @@ export default defineConfig([
       "guard-for-in": "off", // No guard needed because there is no inheritance used
       "jsdoc/check-tag-names": ["error", { definedTags: ["OnlyCurrentDoc"] }],
       "max-lines-per-function": "warn", // Temporary warning until functions are cleaned up
-      "max-statements": ["error", 15], // Increase from 10 to 15
+      "max-statements": ["error", 17], // Increase from 10 to 17
       "max-lines": ["error", 350],     // Increase from 300 to 350
       "no-console": "off", // console.log is used for Apps Script logging
       "no-inline-comments": ["error", { "ignorePattern": "Column \\w+" }], // Map to column number
       "no-implicit-globals": "off", // Apps Script functions can only be in global scope
-      "no-magic-numbers": ["error", { ignore: [0, 1] }], // 0 and 1 are used often
+      "no-magic-numbers": ["error", { ignore: [-1, 0, 1] }], // -1, 0, and 1 are used often
       "no-param-reassign": "off", // Only for non-strict mode, and strict mode is used
       "no-plusplus": "off", // ++ is preferred over += 1
       "no-underscore-dangle": "off", // Apps Script private function names end with _

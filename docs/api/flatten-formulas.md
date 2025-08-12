@@ -11,7 +11,7 @@ A cell should be flattened if it&#39;s a checkbox with a formula on a row with a
 <dt><a href="#processRowForFlattening_">processRowForFlattening_(sheetData, rowIndex)</a> ⇒ <code>Array</code></dt>
 <dd><p>Processes a single row to determine what value should be written back.</p>
 </dd>
-<dt><a href="#buildFlattenedDataArray_">buildFlattenedDataArray_(sheetData)</a> ⇒ <code>Object</code></dt>
+<dt><a href="#buildFlattenedDataArray_">buildFlattenedDataArray_(sheetData)</a> ⇒ <code><a href="#FlatteningResult">FlatteningResult</a></code></dt>
 <dd><p>Builds the data array to write back to the sheet and counts flattened formulas.</p>
 </dd>
 <dt><a href="#processSheetForFlattening_">processSheetForFlattening_(sheet, sheetName)</a> ⇒ <code>number</code></dt>
@@ -31,6 +31,9 @@ This is intended to be run manually from the Apps Script Editor.</p>
 <dt><a href="#SheetFlatteningData">SheetFlatteningData</a> : <code>object</code></dt>
 <dd><p>Data structure containing all information needed for flattening analysis.</p>
 </dd>
+<dt><a href="#FlatteningResult">FlatteningResult</a> : <code>object</code></dt>
+<dd><p>Result of building the flattened data array.</p>
+</dd>
 </dl>
 
 <a name="readSheetDataForFlattening_"></a>
@@ -48,8 +51,7 @@ Reads sheet data needed for formula flattening analysis.
 <a name="shouldFlattenCell_"></a>
 
 ## shouldFlattenCell\_(hasFormula, isCheckbox, monsterName) ⇒ <code>boolean</code>
-Determines if a cell should be flattened to FALSE.
-A cell should be flattened if it's a checkbox with a formula on a row with a monster name.
+Determines if a cell should be flattened to FALSE.A cell should be flattened if it's a checkbox with a formula on a row with a monster name.
 
 **Kind**: global function  
 **Returns**: <code>boolean</code> - True if the cell should be flattened.  
@@ -75,11 +77,11 @@ Processes a single row to determine what value should be written back.
 
 <a name="buildFlattenedDataArray_"></a>
 
-## buildFlattenedDataArray\_(sheetData) ⇒ <code>Object</code>
+## buildFlattenedDataArray\_(sheetData) ⇒ [<code>FlatteningResult</code>](#FlatteningResult)
 Builds the data array to write back to the sheet and counts flattened formulas.
 
 **Kind**: global function  
-**Returns**: <code>Object</code> - Object with data array and count.  
+**Returns**: [<code>FlatteningResult</code>](#FlatteningResult) - Object with data array and count.  
 
 | Param | Type | Description |
 | --- | --- | --- |
@@ -101,10 +103,7 @@ Processes a single sheet for formula flattening.
 <a name="flattenCheckboxFormulas"></a>
 
 ## flattenCheckboxFormulas()
-A developer utility function that finds all cells in the checkbox column (A) that are
-formatted as a checkbox, contain a formula, AND have a corresponding monster name in Column B.
-It replaces these formulas with a default `FALSE` value, while preserving all other formulas.
-This is intended to be run manually from the Apps Script Editor.
+A developer utility function that finds all cells in the checkbox column (A) that areformatted as a checkbox, contain a formula, AND have a corresponding monster name in Column B.It replaces these formulas with a default `FALSE` value, while preserving all other formulas.This is intended to be run manually from the Apps Script Editor.
 
 **Kind**: global function  
 <a name="SheetFlatteningData"></a>
@@ -123,4 +122,17 @@ Data structure containing all information needed for flattening analysis.
 | nameValues | <code>Array.&lt;Array.&lt;\*&gt;&gt;</code> | 2D array of values from the monster name column. |
 | lastRow | <code>number</code> | The last row number with data in the sheet. |
 | checkboxColumnRange | <code>GoogleAppsScript.Spreadsheet.Range</code> | The range object for the checkbox column. |
+
+<a name="FlatteningResult"></a>
+
+## FlatteningResult : <code>object</code>
+Result of building the flattened data array.
+
+**Kind**: global typedef  
+**Properties**
+
+| Name | Type | Description |
+| --- | --- | --- |
+| dataToWrite | <code>Array.&lt;Array.&lt;\*&gt;&gt;</code> | 2D array of data to write back to the sheet. |
+| formulasFlattened | <code>number</code> | Number of formulas that were flattened to FALSE. |
 

@@ -22,6 +22,12 @@
  */
 
 /**
+ * @typedef {object} FlatteningResult Result of building the flattened data array.
+ * @property {Array<Array<*>>} dataToWrite 2D array of data to write back to the sheet.
+ * @property {number} formulasFlattened Number of formulas that were flattened to FALSE.
+ */
+
+/**
  * Reads sheet data needed for formula flattening analysis.
  * @param {GoogleAppsScript.Spreadsheet.Sheet} sheet The sheet to read from.
  * @returns {SheetFlatteningData|null} Object containing all necessary data arrays, or null if empty.
@@ -91,7 +97,7 @@ function processRowForFlattening_(sheetData, rowIndex) {
 /**
  * Builds the data array to write back to the sheet and counts flattened formulas.
  * @param {SheetFlatteningData} sheetData Object containing all data for the sheet.
- * @returns {{dataToWrite: Array<Array<*>>, formulasFlattened: number}} Object with data array and count.
+ * @returns {FlatteningResult} Object with data array and count.
  */
 function buildFlattenedDataArray_(sheetData) {
   const dataToWrite = [];
