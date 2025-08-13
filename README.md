@@ -20,8 +20,11 @@ src/
 │   ├── config.js               # Shared configuration for sync scripts
 │   ├── checkbox-sync.js        # Core checkbox synchronization and onEdit trigger
 │   └── flatten-formulas.js     # Developer utility for flattening checkbox formulas
+├── backup/
+│   ├── export.js               # Functions for exporting spreadsheet data to JSON
+│   ├── import.js               # Functions for importing spreadsheet data from JSON
+│   └── shared-helpers.js       # Shared helper functions for backup operations
 ├── update-links.js             # Standalone script to update hyperlinks in Collection sheet
-├── external-import-export.js   # Functions for JSON backup and restore
 └── utils.js                    # Collection of shared helper functions
 scripts/
 ├── generate_context_markdown.py  # Library for generating project context documentation
@@ -42,8 +45,10 @@ outputs/
 -   `src/sync/config.js`: Shared configuration object containing sheet names for synchronization
 -   `src/sync/checkbox-sync.js`: The core script for checkbox synchronization, containing the `onEdit` trigger and main sync logic
 -   `src/sync/flatten-formulas.js`: Developer utility for converting checkbox formulas to boolean values
+-   `src/backup/export.js`: Functions for exporting spreadsheet data (values and formulas) to JSON files in Google Drive
+-   `src/backup/import.js`: Functions for importing spreadsheet data from JSON files using a two-phase approach for formula handling
+-   `src/backup/shared-helpers.js`: Shared helper functions used by both import and export operations
 -   `src/update-links.js`: A standalone script to update hyperlinks in the `Collection` sheet
--   `src/external-import-export.js`: Contains functions to export the sheet's content to a JSON file and import it back
 -   `src/utils.js`: A collection of shared helper functions
 
 ### Development & Documentation Tools
@@ -85,8 +90,10 @@ outputs/
     -   `src/sync/config.js` → Create "config" file
     -   `src/sync/checkbox-sync.js` → Create "checkbox-sync" file  
     -   `src/sync/flatten-formulas.js` → Create "flatten-formulas" file
+    -   `src/backup/export.js` → Create "export" file
+    -   `src/backup/import.js` → Create "import" file
+    -   `src/backup/shared-helpers.js` → Create "shared-helpers" file
     -   `src/update-links.js` → Create "update-links" file
-    -   `src/external-import-export.js` → Create "external-import-export" file
     -   `src/utils.js` → Create "utils" file
 4.  Copy the contents of each local `.js` file and paste it into the corresponding file in the Apps Script editor.
 5.  Save the project in the Apps Script editor.
@@ -117,12 +124,13 @@ Most scripts are designed to be run manually from the Apps Script editor, except
 -   **Update Monster Links (`updateMonsterLinks` in `src/update-links.js`)**:
     1.  In the Apps Script editor, select the `updateMonsterLinks` function from the function dropdown menu.
     2.  Click **Run**.
--   **Export Data (`exportCellContentAndFormulasOptimized` in `src/external-import-export.js`)**:
-    1.  Select the `exportCellContentAndFormulasOptimized` function.
-    2.  Click **Run**. A JSON file will be saved to the root of your Google Drive.
--   **Import Data (`importCellContentAndFormulasOptimized` in `src/external-import-export.js`)**:
-    1.  Select the `importCellContentAndFormulasOptimized` function.
-    2.  Click **Run**. You will be prompted to enter the filename of the JSON backup.
+-   **Export Data (`exportToJsonFile` in `src/backup/export.js`)**:
+    1.  To use a custom filename, modify the function in the code to include your desired filename.
+    2.  To use automatic timestamped filename, call: `exportToJsonFile()`
+    3.  Select the function from the dropdown and click **Run**.
+-   **Import Data (`importFromJsonFile` in `src/backup/import.js`)**:
+    1.  Modify the function in the code to include your JSON filename.
+    2.  Select the function from the dropdown and click **Run**.
 -   **Flatten Checkbox Formulas (`flattenCheckboxFormulas` in `src/sync/flatten-formulas.js`)**:
     1.  This is a developer utility used to clean up checkbox columns that contain formulas.
     2.  Select the `flattenCheckboxFormulas` function and click **Run**.
@@ -176,7 +184,9 @@ This section contains the auto-generated API documentation for the project. It i
 -   [checkbox-sync](docs/api/checkbox-sync.md)
 -   [flatten-formulas](docs/api/flatten-formulas.md)
 -   [config](docs/api/config.md)
--   [external-import-export](docs/api/external-import-export.md)
+-   [export](docs/api/export.md)
+-   [import](docs/api/import.md)
+-   [shared-helpers](docs/api/shared-helpers.md)
 -   [update-links](docs/api/update-links.md)
 -   [utils](docs/api/utils.md)
 

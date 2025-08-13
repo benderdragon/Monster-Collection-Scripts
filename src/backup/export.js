@@ -71,7 +71,7 @@ function processSheet_(sheet) {
  * @param {string} spreadsheetName The name of the spreadsheet.
  * @returns {string} The generated filename.
  */
-function generateFileName_(spreadsheetName) {
+function generateTimestampedFileName_(spreadsheetName) {
   const timestamp = new Date().toISOString().replace(/:/gv, "-");
   return `${spreadsheetName}_content_and_formulas_${timestamp}.json`;
 }
@@ -94,12 +94,14 @@ function saveToGoogleDrive_(data, fileName) {
   }
 }
 
-/* exported exportToJson */
+/* exported exportToJsonFile */
 /**
  * Exports all cell content (values and formulas) from the active Google Spreadsheet
- * to a JSON file in Google Drive. This script is optimized to minimize API calls.
+ * to a JSON file in Google Drive with a customizable filename. This script is
+ * optimized to minimize API calls.
+ * @param {string} [customFileName] Optional custom filename. If not provided, a timestamped filename will be generated.
  */
-function exportToJson() {
+function exportToJsonFile(customFileName) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
   const allCellData = {};
 
@@ -113,8 +115,10 @@ function exportToJson() {
     }
   });
 
-  const fileName = generateFileName_(spreadsheet.getName());
+  // Use custom filename or generate timestamped one
+  const fileName =
+    customFileName || generateTimestampedFileName_(spreadsheet.getName());
   saveToGoogleDrive_(allCellData, fileName);
 
-  console.log("Export process finished.");
+  console.log(`Export process finished. File saved as '${fileName}'.`);
 }

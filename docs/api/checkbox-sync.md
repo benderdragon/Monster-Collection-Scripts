@@ -115,7 +115,8 @@ Applies batched updates to a target sheet.
 <a name="syncAllSheets_"></a>
 
 ## syncAllSheets\_(sourceDataMap, originatingSheetName)
-Syncs all configured sheets to match the state provided in the sourceDataMap.Uses batch operations to read and write data for maximum performance, skipping formulas.
+Syncs all configured sheets to match the state provided in the sourceDataMap.
+Uses batch operations to read and write data for maximum performance, skipping formulas.
 
 **Kind**: global function  
 
@@ -151,7 +152,8 @@ Reads and processes monster data from the source sheet into a normalized map.
 <a name="onEdit"></a>
 
 ## onEdit(event)
-The main trigger function that runs automatically when a user edits the spreadsheet.It reads the entire state of the edited sheet and triggers a full synchronization.
+The main trigger function that runs automatically when a user edits the spreadsheet.
+It reads the entire state of the edited sheet and triggers a full synchronization.
 
 **Kind**: global function  
 **See**: https://developers.google.com/apps-script/guides/triggers/events  

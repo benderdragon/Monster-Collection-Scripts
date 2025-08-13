@@ -21,39 +21,20 @@
  * @property {string} sheetName Name of sheet for logging
  */
 
-/* global parseA1 -- used in calculateSheetDimensions_() and importFromJson() */
-/* global tryParseDate -- used in importStaticValuesPhase_() */
-
 /**
- * Prompts user for JSON filename and handles the response.
- * @param {GoogleAppsScript.Base.Ui} ui The spreadsheet UI object.
- * @returns {{fileName: string, cancelled: boolean}} Result of user prompt.
+ * @typedef {object} FileLoadResult
+ * @property {object} data The parsed JSON data
+ * @property {boolean} success Whether the operation succeeded
+ * @property {string} [error] Error message if operation failed
  */
-function promptForFileName_(ui) {
-  const fileNameResponse = ui.prompt(
-    "Import JSON File",
-    'Enter the name of the JSON file to import from Google Drive (e.g., "MySpreadsheet_content_and_formulas_...json"): ',
-    ui.ButtonSet.OK_CANCEL
-  );
 
-  if (fileNameResponse.getSelectedButton() !== ui.Button.OK) {
-    console.log("Import: User cancelled at file prompt");
-    return { fileName: "", cancelled: true };
-  }
-
-  const jsonFileName = fileNameResponse.getResponseText();
-  if (!jsonFileName) {
-    console.log("Import: No file name entered");
-    return { fileName: "", cancelled: true };
-  }
-
-  return { fileName: jsonFileName, cancelled: false };
-}
+/* global parseA1 -- used in calculateSheetDimensions_() and importFromJsonFile() */
+/* global tryParseDate -- used in importStaticValuesPhase_() */
 
 /**
  * Finds and loads JSON file from Google Drive.
  * @param {string} fileName The name of the JSON file to load.
- * @returns {{data: object, success: boolean, error?: string}} Result of file loading operation.
+ * @returns {FileLoadResult} Result of file loading operation.
  */
 function loadJsonFile_(fileName) {
   console.log(`Import: Loading JSON file '${fileName}'`);
@@ -261,32 +242,31 @@ function processImportData_(spreadsheet, importedData) {
   return sheetsProcessedCount;
 }
 
-/* exported importFromJson */
+/* exported importFromJsonFile */
 /**
  * Imports cell content (values and formulas) into the active Google Spreadsheet
- * from a JSON file located in Google Drive. This script uses a two-phase approach
- * to correctly import formulas and their spilled results.
+ * from a specified JSON file located in Google Drive. This script uses a two-phase
+ * approach to correctly import formulas and their spilled results.
+ * @param {string} fileName The name of the JSON file to import from Google Drive.
  */
-function importFromJson() {
+function importFromJsonFile(fileName) {
   const spreadsheet = SpreadsheetApp.getActiveSpreadsheet();
-  const ui = SpreadsheetApp.getUi();
 
-  console.log("Import: Starting import process");
-
-  // Get filename from user
-  const promptResult = promptForFileName_(ui);
-  if (promptResult.cancelled) {
-    return;
-  }
+  console.log(`Import: Starting import process for file '${fileName}'`);
 
   // Load and parse JSON file
-  const loadResult = loadJsonFile_(promptResult.fileName);
+  const loadResult = loadJsonFile_(fileName);
   if (!loadResult.success) {
+    console.log(
+      `Import: Failed to load file '${fileName}' - ${loadResult.error}`
+    );
     return;
   }
 
   // Process all sheets from the imported data
   const sheetsProcessed = processImportData_(spreadsheet, loadResult.data);
 
-  console.log(`Import: Complete. Processed ${sheetsProcessed} sheet(s).`);
+  console.log(
+    `Import: Complete. Processed ${sheetsProcessed} sheet(s) from '${fileName}'.`
+  );
 }

@@ -41,7 +41,6 @@ export default defineConfig([
       "func-style": ["error", "declaration"], // Use function declarations, not expressions
       "guard-for-in": "off", // No guard needed because there is no inheritance used
       "jsdoc/check-tag-names": ["error", { definedTags: ["OnlyCurrentDoc"] }],
-      "max-lines-per-function": "warn", // Temporary warning until functions are cleaned up
       "max-statements": ["error", 17], // Increase from 10 to 17
       "max-lines": ["error", 350],     // Increase from 300 to 350
       "no-console": "off", // console.log is used for Apps Script logging
@@ -56,14 +55,14 @@ export default defineConfig([
       "sort-keys": "off", // Enforcing alphabetical order of keys is not always practical
       strict: ["error", "global"], // Use global strict, not function
 
-      complexity: "warn", // Temporary warning until functions are cleaned up
-      "no-continue": "warn", // Temporary warning until functions are cleaned up
-      "no-unused-vars": "warn", // Temporary warning until utils are actually used
 
       // --- Notable Default Rules ---
+      complexity: "error",
+      "max-lines-per-function": "error",
       "max-params": ["error", 3],
       "no-continue": "error",
       "no-lonely-if": "error", // Possible during refactoring
+      "no-unused-vars": "error",
       "no-use-before-define": "error",
 
       "jsdoc/check-types": "warn", // object vs Object

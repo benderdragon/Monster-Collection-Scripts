@@ -51,7 +51,8 @@ Reads sheet data needed for formula flattening analysis.
 <a name="shouldFlattenCell_"></a>
 
 ## shouldFlattenCell\_(hasFormula, isCheckbox, monsterName) ⇒ <code>boolean</code>
-Determines if a cell should be flattened to FALSE.A cell should be flattened if it's a checkbox with a formula on a row with a monster name.
+Determines if a cell should be flattened to FALSE.
+A cell should be flattened if it's a checkbox with a formula on a row with a monster name.
 
 **Kind**: global function  
 **Returns**: <code>boolean</code> - True if the cell should be flattened.  
@@ -103,7 +104,10 @@ Processes a single sheet for formula flattening.
 <a name="flattenCheckboxFormulas"></a>
 
 ## flattenCheckboxFormulas()
-A developer utility function that finds all cells in the checkbox column (A) that areformatted as a checkbox, contain a formula, AND have a corresponding monster name in Column B.It replaces these formulas with a default `FALSE` value, while preserving all other formulas.This is intended to be run manually from the Apps Script Editor.
+A developer utility function that finds all cells in the checkbox column (A) that are
+formatted as a checkbox, contain a formula, AND have a corresponding monster name in Column B.
+It replaces these formulas with a default `FALSE` value, while preserving all other formulas.
+This is intended to be run manually from the Apps Script Editor.
 
 **Kind**: global function  
 <a name="SheetFlatteningData"></a>

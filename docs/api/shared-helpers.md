@@ -23,25 +23,14 @@ into a 0-based row and column index object { row: number, col: number }.</p>
 <dd><p>Helper function to attempt parsing a value into a Date object if it&#39;s a supported date string.
 Otherwise, returns the original value.</p>
 </dd>
-<dt><a href="#exportCellContentAndFormulasOptimized">exportCellContentAndFormulasOptimized()</a></dt>
-<dd><p>Exports all cell content (values and formulas) from the active Google Spreadsheet
-to a JSON file in Google Drive. This script is optimized to minimize API calls.</p>
-</dd>
-<dt><a href="#importCellContentAndFormulasOptimized">importCellContentAndFormulasOptimized()</a></dt>
-<dd><p>Imports cell content (values and formulas) into the active Google Spreadsheet
-from a JSON file located in Google Drive. This script uses a two-phase approach
-to correctly import formulas and their spilled results.</p>
-</dd>
 </dl>
 
 <a name="LETTERS_IN_ALPHABET"></a>
 
 ## LETTERS\_IN\_ALPHABET
 **Kind**: global constant  
-**Onlycurrentdoc**: This script provides functions to export and import spreadsheet data (values and formulas)
-to and from a JSON file stored in Google Drive. This allows for backing up and restoring
-a spreadsheet's state. The import process is optimized to handle array formulas and
-preserve spilled results.  
+**Onlycurrentdoc**: Shared utility functions for backup and restore operations.
+These helpers are used by both import and export functionality.  
 <a name="columnToLetter"></a>
 
 ## columnToLetter(column) ⇒ <code>string</code>
@@ -93,18 +82,3 @@ Otherwise, returns the original value.
 | --- | --- | --- |
 | value | <code>\*</code> | The value to potentially parse. |
 
-<a name="exportCellContentAndFormulasOptimized"></a>
-
-## exportCellContentAndFormulasOptimized()
-Exports all cell content (values and formulas) from the active Google Spreadsheet
-to a JSON file in Google Drive. This script is optimized to minimize API calls.
-
-**Kind**: global function  
-<a name="importCellContentAndFormulasOptimized"></a>
-
-## importCellContentAndFormulasOptimized()
-Imports cell content (values and formulas) into the active Google Spreadsheet
-from a JSON file located in Google Drive. This script uses a two-phase approach
-to correctly import formulas and their spilled results.
-
-**Kind**: global function  
