@@ -27,8 +27,17 @@
 *   **Code Documentation:**
     *   Document all major functions and any function that takes more than two arguments.
     *   Use JSDoc comments for all Javascript documentation.
-    *   When documenting a custom object structure in JSDoc, define it using `@typedef`.
-*   **Internal Code Comments:** Do not add temporary or conversational comments (e.g., `# NEW:`, `# TODO:`) into the code itself. Do not remove existing comments.
+    *   When documenting a custom object structure in JSDoc, define it using `@typedef`. Follow this template for structure and clarity:
+        ```js
+        /**
+         * @typedef {object} MyObject
+         * @property {Array<string>} key1 Description for key1.
+         * @property {number} key2 Description for key2.
+         */
+        ```
+*   **Internal Code Comments:**
+    *   When adding new code, add explanatory comments for logic that is not immediately obvious from the code itself (e.g., complex algorithms, dense blocks of code).
+    *   Do not add temporary or conversational comments (e.g., `# NEW:`, `# TODO:`) into the code itself. Do not remove existing comments.
 
 ## 3. Language-Specific Rules
 
@@ -46,7 +55,9 @@
     *   Clean up any `https://www.google.com/url?` prefixes from hyperlinks.
 *   **Data Handling:** Be mindful that `setValues()` can overwrite formulas and data types. Ensure a proper mix of values and formulas is maintained when writing data back to a sheet.
 *   **Best Practices:**
+    *   Place `/* exported functionName */` declarations immediately before the JSDoc block for the associated function.
     *   Name internal helper functions with a trailing underscore (e.g., `myHelper_()`) to indicate they are not meant for direct execution by the user or from the editor.
+    *   Do not prefix JSDoc descriptions with a hyphen (`-`).
     *   Ensure `@OnlyCurrentDoc` is present in applicable script files to limit security scope.
     *   Do not add UI code (`SpreadsheetApp.getUi()`) unless specifically requested.
     *   For non-trivial functions, add `console.log()` statements to show execution progress.
