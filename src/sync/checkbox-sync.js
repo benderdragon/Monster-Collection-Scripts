@@ -5,7 +5,7 @@
  * @file Checkbox synchronization system for monster collection sheets.
  * This script synchronizes checkboxes across multiple sheets in the active Google Sheet.
  * It's designed for a "Monster Collection" tracker and runs automatically via onEdit trigger.
- * 
+ *
  * Requires: config.js (for CONFIG object)
  */
 
@@ -65,7 +65,7 @@ function readTargetSheetData_(sheet) {
     lastRow,
     NAME_COL - CHECKBOX_COL + 1
   );
-  
+
   return {
     targetData: targetRange.getValues(),
     targetFormulas: targetRange.getFormulas(),

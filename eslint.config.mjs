@@ -59,6 +59,14 @@ export default defineConfig([
       complexity: "warn", // Temporary warning until functions are cleaned up
       "no-continue": "warn", // Temporary warning until functions are cleaned up
       "no-unused-vars": "warn", // Temporary warning until utils are actually used
+
+      // --- Notable Default Rules ---
+      "max-params": ["error", 3],
+      "no-continue": "error",
+      "no-lonely-if": "error", // Possible during refactoring
+      "no-use-before-define": "error",
+
+      "jsdoc/check-types": "warn", // object vs Object
     },
   },
   {

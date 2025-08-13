@@ -5,7 +5,7 @@
  * @file Developer utility for flattening checkbox formulas in monster collection sheets.
  * This script provides a function to convert checkbox columns from formulas to boolean values,
  * which is intended to be run manually from the Apps Script editor.
- * 
+ *
  * Requires: config.js (for CONFIG object)
  */
 
@@ -109,8 +109,8 @@ function buildFlattenedDataArray_(sheetData) {
     dataToWrite.push(processedValue);
 
     // Count if this row was actually flattened (had a formula that became FALSE)
-    const wasFlattened = processedValue[0] === false && 
-                        sheetData.checkboxFormulas[row][0] !== "";
+    const wasFlattened =
+      processedValue[0] === false && sheetData.checkboxFormulas[row][0] !== "";
     if (wasFlattened) {
       formulasFlattened++;
     }
@@ -133,7 +133,8 @@ function processSheetForFlattening_(sheet, sheetName) {
   }
 
   // Build the array of data to write back and count changes
-  const { dataToWrite, formulasFlattened } = buildFlattenedDataArray_(sheetData);
+  const { dataToWrite, formulasFlattened } =
+    buildFlattenedDataArray_(sheetData);
 
   // Apply changes if any formulas were flattened
   if (formulasFlattened > 0) {
