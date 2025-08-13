@@ -25,7 +25,6 @@ src/
 │   ├── import.js               # Functions for importing spreadsheet data from JSON
 │   └── shared-helpers.js       # Shared helper functions for backup operations
 ├── update-links.js             # Standalone script to update hyperlinks in Collection sheet
-└── utils.js                    # Collection of shared helper functions
 scripts/
 ├── generate_context_markdown.py  # Library for generating project context documentation
 ├── run_context_generator.py     # Script that runs the context generator
@@ -49,7 +48,6 @@ outputs/
 -   `src/backup/import.js`: Functions for importing spreadsheet data from JSON files using a two-phase approach for formula handling
 -   `src/backup/shared-helpers.js`: Shared helper functions used by both import and export operations
 -   `src/update-links.js`: A standalone script to update hyperlinks in the `Collection` sheet
--   `src/utils.js`: A collection of shared helper functions
 
 ### Development & Documentation Tools
 
@@ -94,7 +92,6 @@ outputs/
     -   `src/backup/import.js` → Create "import" file
     -   `src/backup/shared-helpers.js` → Create "shared-helpers" file
     -   `src/update-links.js` → Create "update-links" file
-    -   `src/utils.js` → Create "utils" file
 4.  Copy the contents of each local `.js` file and paste it into the corresponding file in the Apps Script editor.
 5.  Save the project in the Apps Script editor.
 
@@ -188,7 +185,6 @@ This section contains the auto-generated API documentation for the project. It i
 -   [import](docs/api/import.md)
 -   [shared-helpers](docs/api/shared-helpers.md)
 -   [update-links](docs/api/update-links.md)
--   [utils](docs/api/utils.md)
 
 ## Development Note
 
